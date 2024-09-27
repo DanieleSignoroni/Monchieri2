@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<customization>
+  <formcustomization customizePosition="START_TABBED" customizeName="15">
+    <tab name="cust_tab1" resourceFile="it.valvorobica.thip.base.articolo.resources.YMicroFamiglia" resourceID="tab1">
+      <table style="width: 100%;">
+        <tr>
+          <td valign="top">
+            <checkbox classAD="CertificatiDaPortale" name="CertificatiDaPortale"/>
+          </td>
+          <td valign="top">
+          </td>
+        </tr>
+      </table>
+    </tab>
+  </formcustomization>
+</customization>

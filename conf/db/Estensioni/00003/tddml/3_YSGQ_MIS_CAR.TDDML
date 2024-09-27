@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE TDDML SYSTEM "../../../TDDML.dtd">
+<TDDML>
+  <!-- YSGQ_MIS_CAR (YSGQ_MI): Misura caratteristica; -->
+  <CreateTable schema="THIPPERS" name="YSGQ_MIS_CAR" shortname="YSGQ_MI">
+    <Column name="ID_AZIENDA" shortname="ID_AZIENDA" type="char" length="3" nullable="no"/>
+    <Column name="ID_TIPO_DOC_PRV" shortname="ID_TIPO_DO" type="char" length="3" nullable="no"/>
+    <Column name="ID_ANNO_DOC" shortname="ID_ANNO_DO" type="char" length="6" nullable="no"/>
+    <Column name="ID_NUMERO_DOC" shortname="ID_NUMERO_" type="char" length="10" nullable="no"/>
+    <Column name="ID_RIGA_DOC" shortname="ID_RIGA_DO" type="integer" nullable="no"/>
+    <Column name="ID_NUMERO_ISTANZA" shortname="ID_NUMERO0" type="integer" nullable="no"/>
+    <Column name="ID_SEQUENZA_FASE" shortname="ID_SEQUENZ" type="smallint" nullable="no"/>
+    <Column name="ID_SEQUENZA_CAR" shortname="ID_SEQUEN0" type="smallint" nullable="no"/>
+    <Column name="YFORMULA" shortname="YFORMULA" type="char" length="90" nullable="yes"/>
+  </CreateTable>
+  <CreateIndex schema="THIPPERS" name="YSGQ_MIS_CAR_I01" tabschema="THIPPERS" tabname="YSGQ_MIS_CAR" shortname="YSGQ_M_I01" unique="yes">
+    <IndexCol name="ID_AZIENDA" order="Asc"/>
+    <IndexCol name="ID_TIPO_DOC_PRV" order="Asc"/>
+    <IndexCol name="ID_ANNO_DOC" order="Asc"/>
+    <IndexCol name="ID_NUMERO_DOC" order="Asc"/>
+    <IndexCol name="ID_RIGA_DOC" order="Asc"/>
+    <IndexCol name="ID_NUMERO_ISTANZA" order="Asc"/>
+    <IndexCol name="ID_SEQUENZA_FASE" order="Asc"/>
+    <IndexCol name="ID_SEQUENZA_CAR" order="Asc"/>
+  </CreateIndex>
+  <AlterTable schema="THIPPERS" name="YSGQ_MIS_CAR">
+    <AddPrimaryKey>
+      <PrimaryKey>
+        <ColumnRef name="ID_AZIENDA"/>
+        <ColumnRef name="ID_TIPO_DOC_PRV"/>
+        <ColumnRef name="ID_ANNO_DOC"/>
+        <ColumnRef name="ID_NUMERO_DOC"/>
+        <ColumnRef name="ID_RIGA_DOC"/>
+        <ColumnRef name="ID_NUMERO_ISTANZA"/>
+        <ColumnRef name="ID_SEQUENZA_FASE"/>
+        <ColumnRef name="ID_SEQUENZA_CAR"/>
+      </PrimaryKey>
+    </AddPrimaryKey>
+  </AlterTable>
+  <Comment>
+    <CommentTable schema="THIPPERS" name="YSGQ_MIS_CAR" text="Misura caratteristica">
+      <CommentColumn name="ID_AZIENDA" text="IdAzienda"/>
+      <CommentColumn name="ID_TIPO_DOC_PRV" text="TipoDocProvenienza"/>
+      <CommentColumn name="ID_ANNO_DOC" text="AnnoDocumento"/>
+      <CommentColumn name="ID_NUMERO_DOC" text="NumeroDocumento"/>
+      <CommentColumn name="ID_RIGA_DOC" text="RigaDocumento"/>
+      <CommentColumn name="ID_NUMERO_ISTANZA" text="NumeroIstanza"/>
+      <CommentColumn name="ID_SEQUENZA_FASE" text="Sequenza Fase"/>
+      <CommentColumn name="ID_SEQUENZA_CAR" text="Sequenza Caratteristica"/>
+      <CommentColumn name="YFORMULA" text="Formula"/>
+    </CommentTable>
+    <CommentIndex schema="THIPPERS" name="YSGQ_MIS_CAR_I01" text="Primary Key"/>
+  </Comment>
+  <Grant schema="THIPPERS" name="YSGQ_MIS_CAR"/>
+</TDDML>

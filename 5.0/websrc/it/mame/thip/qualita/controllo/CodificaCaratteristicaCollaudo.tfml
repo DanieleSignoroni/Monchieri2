@@ -1,0 +1,29 @@
+<tfml>
+
+<form classHdr="CodificaCarCollaudo" name="form"
+        errorList="yes" menubar="yes" toolbar="yes" submitReset="none"
+				servlet="com.thera.thermfw.web.servlet.FormActionAdapter"
+        header="it.thera.thip.cs.Header.jsp"
+	      footer="it.thera.thip.cs.Footer.jsp">
+
+<menubar  name="myMenuBar">
+  <import file="it/thera/thip/cs/defObjMenu.tfml"/>
+</menubar>
+
+<toolbar name="myToolBar" imgwidth="16" imgheight="16">
+  <import file="it/thera/thip/cs/defObjMenu.tfml"/>
+</toolbar>
+
+<tabbed name="mytabbed" height="100%" width="100%">
+  <tab name="tab1" resourceFile="it.thera.thip.cs.resources.Cs" resourceID="DatiGenerali">
+	<textinput classAD="Codice" name="Codice"/>
+	<textinput classAD="Formula" name="Formula"/>
+	<subform classCD="Descrizione" name="Descrizione"/>
+	<subform classCD="DatiComuniEstesi" name="DatiComuniEstesi"/>
+  </tab>
+  <tab name="tab2" resourceFile="it.thera.thip.cs.resources.Cs" resourceID="DescrizioniNLS">
+	  <subform classCD="Descrizione" name="DescrizioneNLS" formJSPName="it/thera/thip/cs/DescrizioneInLingua.jsp"/>
+  </tab>	
+</tabbed>
+</form>
+</tfml>

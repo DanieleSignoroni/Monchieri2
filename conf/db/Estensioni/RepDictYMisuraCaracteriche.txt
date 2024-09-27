@@ -1,0 +1,7 @@
+<B>2024-09-26 11:41:15</B>
+<BR>Il dizionario <B>YSGQ_MIS_CAR</B> è stato cancellato
+<BR>Il file <B>W:\PthDev\Projects\Panthera\Monchieri2\conf\db\Estensioni\00003\tddml\3_DROP_YSGQ_MIS_CAR.TDDML</B> e' stato generato correttamente.
+<BR>Il dizionario <B>YSGQ_MIS_CAR</B> è stato creato
+<BR>Il file <B>W:\PthDev\Projects\Panthera\Monchieri2\conf\db\Estensioni\00003\tddml\3_YSGQ_MIS_CAR.TDDML</B> e' stato generato correttamente.
+<BR>Il file <B>W:\PthDev\Projects\Panthera\Monchieri2\conf\db\Estensioni\00003\tddml\3_CONSTRAINT.TDDML</B> e' stato generato correttamente.
+<BR><B>La generazione tabella è completata con successo</B><BR>

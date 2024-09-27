@@ -1,0 +1,3 @@
+<B>2024-09-26 11:41:22</B>
+<BR>Il descrittore di classe <B>YMisuraCaracteriche</B> è stato generato correttamente
+<BR><B>La generazione descrittori di classe è completata con successo</B><BR>

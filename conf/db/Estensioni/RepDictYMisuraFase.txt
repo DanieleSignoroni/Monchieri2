@@ -1,0 +1,6 @@
+<B>2024-09-27 16:10:07</B>
+<BR>Il file <B>W:\PthDev\Projects\Panthera\Monchieri2\conf\db\Estensioni\00004\tddml\4_DROP_YSGQ_MIS_FAS.TDDML</B> e' stato generato correttamente.
+<BR>Il dizionario <B>YSGQ_MIS_FAS</B> è stato creato
+<BR>Il file <B>W:\PthDev\Projects\Panthera\Monchieri2\conf\db\Estensioni\00004\tddml\4_YSGQ_MIS_FAS.TDDML</B> e' stato generato correttamente.
+<BR>Il file <B>W:\PthDev\Projects\Panthera\Monchieri2\conf\db\Estensioni\00004\tddml\4_CONSTRAINT.TDDML</B> e' stato generato correttamente.
+<BR><B>La generazione tabella è completata con successo</B><BR>

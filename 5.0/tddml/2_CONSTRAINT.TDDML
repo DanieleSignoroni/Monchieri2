@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE TDDML SYSTEM "../../../TDDML.dtd">
+<TDDML>
+  <!-- YSGQ_CICLI_CAR (YSGQ_C0) -->
+  <AlterTable schema="THIPPERS" name="YSGQ_CICLI_CAR">
+    <AddConstraint>
+      <Constraint name="CodificaCar_179854" refschema="THIPPERS" reftable="SGQ_COD_CAR_COL" schema="THIPPERS" ondelete="Restrict">
+        <ColumnRef name="ID_AZIENDA"/>
+        <ColumnRef name="R_CAR_MAME"/>
+      </Constraint>
+    </AddConstraint>
+  </AlterTable>
+</TDDML>
