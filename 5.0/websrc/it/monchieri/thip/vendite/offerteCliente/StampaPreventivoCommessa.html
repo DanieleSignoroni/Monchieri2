@@ -1,0 +1,47 @@
+<html>
+<head></head>
+<link href="com/thera/thermfw/common/form.css" rel="STYLESHEET" type="text/css"/>
+<link href="thermweb/css/thermGrid.css" rel="STYLESHEET" type="text/css" />
+<body leftmargin="0" rightmargin="0" topmargin="0" bottommargin="0">
+
+<form name="StampaPreventivoDiCommessa">
+	<table height="100%" width="100%" cellspacing="0" cellpadding="2" id="emptyborder">
+		<tr><td style="height:0"><span class="menubar" id="myMenuBar"/></td></tr>
+		<tr><td style="height:0"><span class="toolbar" id="myToolBar"/></td></tr>
+		<tr>
+			<td>
+				<span class="tabbed" id="mytabbed">
+					<span class="tab" id="tab1">
+						<table width="100%" height="100%">
+						<tr>
+						<input id="ChiaveOfferta" name="ChiaveOfferta" type="hidden"/>
+						<input id="ChiaviSelezionati" name="ChiaviSelezionati" type="hidden"/>
+						<td>
+							<input type="checkbox" id="StampaInLingua" name="StampaInLingua" />
+						</td>
+					</tr>
+							<tr>
+			<td valign="top">
+				<table width="100%" >
+					<tr id ="ListaTR" style="display:'none'">
+						<td id ="ListaTD" ></td>
+					</tr>
+				</table>
+			</td>
+		</tr>
+						</table>
+					</span>
+				</span>
+			</td>
+		</tr>
+		<tr><td style="height:0"><span class="errorlist"/></td></tr>
+	</table>
+	<div style="display: none;">
+	<input type="checkbox" id="SSDEnabled" name="SSDEnabled"/>
+	<input type="checkbox" id="DocDgtEnabled" name="DocDgtEnabled"/>	
+	</div>	
+</form>
+
+</body>
+<script language='JavaScript1.2' type='text/javascript' src='com/thera/thermfw/batch/PrintBatchRunnable.js'></script>
+</html>

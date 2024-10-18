@@ -2,7 +2,7 @@
 <!-- Print Server Configuration -->
 <PrintServerConfiguration xsi:noNamespaceSchemaLocation="PrintServerConfig.xsd" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">  
     <ServerConfiguration>        
-        <Port>10131</Port>
+        <Port>10531</Port>
         <RptRoot>W:/PthDev/Projects/Panthera/Monchieri2/5.0/rpt/cr2008</RptRoot>
         <LogPath>W:/PthDev/works/CRR2008/Monchieri2</LogPath>
         <LogLevel>0</LogLevel>

@@ -1,0 +1,38 @@
+<tfml>
+<generator type="batchForm"/>
+
+	<form name="StampaPreventivoDiCommessa"
+				classHdr="YStampaPrevComm"
+				errorList="yes"
+				inputFont="Arial,10"
+				menubar="yes"
+				submitReset="none"
+				toolbar="yes"
+				header="it.thera.thip.cs.Header.jsp"
+				footer="it.thera.thip.cs.Footer.jsp"
+				onLoadPresent="yes"
+				jsLibraryName="it/monchieri/thip/vendite/offerteCliente/StampaPreventivoCommessa.js"
+				webFormModifierClass="it.monchieri.thip.vendite.offerteCliente.web.StampaPreventivoCommessaModifier">
+
+		<menubar  name="myMenuBar">
+			<import file="it/thera/thip/cs/PrintRunnableMenu.tfml"/>
+		</menubar>
+
+		<toolbar name="myToolBar" imgwidth="16" imgheight="16">
+			<import file="it/thera/thip/cs/PrintRunnableMenu.tfml"/>
+		</toolbar>
+
+		<tabbed name="mytabbed" height="100%" width="100%">
+			<tab name="tab1" resourceFile="it.monchieri.thip.vendite.offerteCliente.resources.StampaPreventivoCommessa" resourceID="Generale">
+			<checkbox name="StampaInLingua" classAD="StampaInLingua"/>
+			<textinput name="ChiaveOfferta" classAD="ChiaveOfferta"/>
+			<textinput name="ChiaviSelezionati" classAD="ChiaviSelezionati"/>
+		</tab>
+		</tabbed>
+
+
+        <checkbox name="SSDEnabled" classAD="SSDEnabled"/>
+		<checkbox name="DocDgtEnabled" classAD="DocDgtEnabled"/>
+	</form>
+
+</tfml>
