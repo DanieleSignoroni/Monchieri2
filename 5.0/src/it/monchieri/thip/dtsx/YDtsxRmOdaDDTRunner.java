@@ -1,6 +1,9 @@
 package it.monchieri.thip.dtsx;
 
 import java.math.BigDecimal;
+import java.sql.Date;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
@@ -8,10 +11,13 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Vector;
 
+import com.inet.remote.gui.modules.adhoc.page.ca;
 import com.thera.thermfw.base.Trace;
 import com.thera.thermfw.batch.BatchRunnable;
+import com.thera.thermfw.persist.CachedStatement;
 import com.thera.thermfw.persist.ConnectionDescriptor;
 import com.thera.thermfw.persist.ConnectionManager;
+import com.thera.thermfw.persist.Database;
 import com.thera.thermfw.persist.KeyHelper;
 import com.thera.thermfw.persist.PersistentObject;
 import com.thera.thermfw.security.Authorizable;
@@ -20,9 +26,21 @@ import it.mame.thip.qualita.controllo.YCicloCollaudoCaratt;
 import it.mame.thip.qualita.controllo.YCicloCollaudoFase;
 import it.mame.thip.qualita.controllo.YNormeQualita;
 import it.mame.thip.qualita.controllo.YNormeQualitaTM;
+import it.monchieri.thip.acquisti.ordineAC.YOrdineAcquistoRigaPrm;
+import it.monchieri.thip.acquisti.ordineAC.YOrdineAcquistoRigaPrmTM;
+import it.thera.thip.acquisti.ordineAC.OrdineAcquistoRiga;
+import it.thera.thip.acquisti.ordineAC.OrdineAcquistoRigaPrm;
 import it.thera.thip.base.azienda.Azienda;
 import it.thera.thip.base.dipendente.Dipendente;
+import it.thera.thip.magazzino.generalemag.Lotto;
+import it.thera.thip.qualita.controllo.CicloCollaudoCaratteristica;
 import it.thera.thip.qualita.controllo.CicloCollaudoTestata;
+import it.thera.thip.qualita.controllo.DocumentiCollaudoRilevazioneMisure;
+import it.thera.thip.qualita.controllo.DocumentoCollaudoRiga;
+import it.thera.thip.qualita.controllo.DocumentoCollaudoTestata;
+import it.thera.thip.qualita.controllo.DocumentoCollaudoTestataTM;
+import it.thera.thip.qualita.controllo.MisuraCaracteriche;
+import it.thera.thip.qualita.controllo.MisuraFase;
 
 /**
  * <h1>Softre Solutions</h1>
@@ -37,9 +55,40 @@ import it.thera.thip.qualita.controllo.CicloCollaudoTestata;
 
 public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 
+	protected static final String SQL_EXIST_DC = "SELECT * FROM " + DocumentoCollaudoTestataTM.TABLE_NAME +
+			" WHERE " + DocumentoCollaudoTestataTM.ID_TIPO_DOCPRV + " LIKE ?" +
+			" AND " + DocumentoCollaudoTestataTM.ID_AZIENDA + "= ?" +
+			" AND " + DocumentoCollaudoTestataTM.STATO_COLL + " IN ("
+			+ "'" + DocumentoCollaudoTestata.COLLAUDO_APPROVATO + "',"
+			+ "'" + DocumentoCollaudoTestata.COLLAUDO_CHIUSO + "',"
+			+ "'" + DocumentoCollaudoTestata.COLLAUDO_DICHIARATO + "')";
+
+	protected static final String SQL_EXIST_DC_ORD_ACQ = SQL_EXIST_DC +
+			" AND " + DocumentoCollaudoTestataTM.ANNO_ORD_ACQ + "= ?" +
+			" AND " + DocumentoCollaudoTestataTM.NUMERO_ORD_ACQ + "= ?" +
+			" AND " + DocumentoCollaudoTestataTM.RIGA_ORD_ACQ + "= ?" +
+			" AND " + DocumentoCollaudoTestataTM.DET_RIGA_ORD_ACQ + "= ?";
+	protected static CachedStatement existDCOrdAcqCachStmt = new CachedStatement(SQL_EXIST_DC_ORD_ACQ);
+
+	public static final String SQL_EXTRACT_DOC_COLL_COLL_NORMA = "SELECT "
+			+ "	* "
+			+ "FROM "
+			+ "	THIP."+DocumentoCollaudoTestataTM.TABLE_NAME+" DCT "
+			+ "INNER JOIN "+YOrdineAcquistoRigaPrmTM.TABLE_NAME_EXT+" AS ORD_ACQ_RIG_Y ON "
+			+ "	ORD_ACQ_RIG_Y."+YOrdineAcquistoRigaPrmTM.ID_AZIENDA+" = DCT."+DocumentoCollaudoTestataTM.ID_AZIENDA+" "
+			+ "	AND ORD_ACQ_RIG_Y."+YOrdineAcquistoRigaPrmTM.ID_ANNO_ORD+" = DCT."+DocumentoCollaudoTestataTM.ANNO_ORD_ACQ+" "
+			+ "	AND ORD_ACQ_RIG_Y."+YOrdineAcquistoRigaPrmTM.ID_NUMERO_ORD+" = DCT."+DocumentoCollaudoTestataTM.NUMERO_ORD_ACQ+" "
+			+ "	AND ORD_ACQ_RIG_Y."+YOrdineAcquistoRigaPrmTM.ID_RIGA_ORD+" = DCT."+DocumentoCollaudoTestataTM.RIGA_ORD_ACQ+" "
+			+ "	AND ORD_ACQ_RIG_Y."+YOrdineAcquistoRigaPrmTM.ID_DET_RIGA_ORD+" = DCT."+DocumentoCollaudoTestataTM.DET_RIGA_ORD_ACQ+" "
+			+ "INNER JOIN "+YNormeQualitaTM.TABLE_NAME+" AS YNORME_QLT ON "
+			+ "	YNORME_QLT."+YNormeQualitaTM.ID_AZIENDA+" = ORD_ACQ_RIG_Y."+YOrdineAcquistoRigaPrmTM.ID_AZIENDA+" "
+			+ "	AND YNORME_QLT."+YNormeQualitaTM.ID_NORMA+" = ORD_ACQ_RIG_Y."+YOrdineAcquistoRigaPrmTM.ID_NORMA_QLT+"  "
+			+ "WHERE DCT."+DocumentoCollaudoTestataTM.ID_AZIENDA+" = ? ";
+	public static CachedStatement cEstrazioneDocCollNorme = new CachedStatement(SQL_EXTRACT_DOC_COLL_COLL_NORMA);
+
 	@Override
 	protected boolean run() {
-		List stmtInsertNorme = estrazioneAnalisiChimichePerTarget();
+		List stmtInsertNorme = estrazioneAnalisiQcRm();
 		ConnectionDescriptor cnd = YDtsxPtExpOrdEsecRunner.externalConnectionDescriptor(YDtsxPtExpOrdEsecRunner.NOME_DB_EXT, YDtsxPtExpOrdEsecRunner.UTENTE_DB_EXT, YDtsxPtExpOrdEsecRunner.PWD_DB_EXT, YDtsxPtExpOrdEsecRunner.SRV_DB_EXT, YDtsxPtExpOrdEsecRunner.PORTA_DB_EXT);
 		try {
 			if(cnd != null) {
@@ -59,7 +108,7 @@ public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 	}
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
-	protected List estrazioneAnalisiChimichePerTarget() {
+	protected List estrazioneAnalisiQcRm() {
 		List list = new ArrayList();
 
 		Vector<YNormeQualita> norme = norme();
@@ -940,6 +989,318 @@ public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 		}
 
 		return list;
+	}
+
+	@SuppressWarnings("rawtypes")
+	protected List estrazioneAnalisiAcciaieria() {
+		List list = new ArrayList();
+		List<DocumentoCollaudoTestata> collaudi = recuperaDocumentiCollaudoDaEsportare();
+		if(collaudi != null) {
+
+			for (DocumentoCollaudoTestata collaudo : collaudi) {
+				try {
+					String keyRigaOrdAcq = KeyHelper.buildObjectKey(new String[] {
+							collaudo.getIdAzienda(),collaudo.getIdAnnoOrdine(),collaudo.getIdNumeroOrd(),collaudo.getNumeroRigaOrdineAcq().toString()
+					});
+					YOrdineAcquistoRigaPrm rigaOrdAcq = (YOrdineAcquistoRigaPrm) YOrdineAcquistoRigaPrm.elementWithKey(YOrdineAcquistoRigaPrm.class, keyRigaOrdAcq, PersistentObject.NO_LOCK);
+					if(rigaOrdAcq != null) {
+						YNormeQualita norma = rigaOrdAcq.getNormaqualita();
+						if(collaudo != null) {
+							CicloCollaudoTestata ciclo = collaudo.riperimentoCicloDeep(collaudo.getIdArticolo(),CicloCollaudoTestata.getDominio(collaudo.getIdTipoDocumentoCollaudo()),collaudo.getDataDocumento(),collaudo.getIdAttivitaLavorativa(),collaudo.getIdCommessa(),collaudo.getDocumentoDaOrdine(),collaudo.getOrdineAcquisto());
+							Lotto lotto = collaudo.getLotto();
+							if(lotto != null && ciclo != null) {
+								String ENTRATA = lotto.getCodiceLotto();
+								Date DATA = lotto.getDataDocAcq();
+								String COLATA = lotto.getLottoAcquisto();
+								String ACCIAIERIA = "";
+								if(lotto.getFornitore() != null) {
+									ACCIAIERIA = lotto.getFornitore().getRagioneSociale();
+								}
+								String ID = adaptProgressivo(ciclo.getProgressivo());
+								String ACCIAIO = norma.getDscAcciaio();
+								String ALLIAS_ACCIAIO = norma.getAliasAcciaio() != null ? norma.getAliasAcciaio() : "";
+								String SPECIFICA_1 = "";
+								String ELAB_ACCIAIO = "";
+								String TIPO_TRAT = "";
+								String NOTE = "";
+								Timestamp TIMESTAMP_AGG = collaudo.getDatiComuni().getTimestampAgg();
+								Float AL;
+								Float ALSOI;
+								Float AS_;
+								Float B;
+								Float BI;
+								Float CA;
+								Float CB;
+								Float CE;
+								Float CO;
+								Float CR;
+								Float CR_EQ;
+								Float CU;
+								Integer H_PPM_O_PERC;
+								Float JF;
+								Float MN;
+								Float MO;
+								Integer N_PPM_O_PERC;
+								Float NB;
+								Float NI;
+								Integer O_PPM_O_PERC;
+								Float P;
+								Float PB;
+								Float PCM;
+								Float PRE;
+								Float S;
+								Float SB;
+								Float SI;
+								Float SN;
+								Float TA;
+								Float TI;
+								Float V;
+								Float W;
+								Float XF;
+								Float ZR;
+								Float C_N;
+								Float FE;
+								Float NB_TA;
+								Float Y;
+								String AC_FORMULA_1;
+								Float AC_FORMULA_1_VALORE;
+								String AC_FORMULA_2;
+								Float AC_FORMULA_2_VALORE;
+								String AC_FORMULA_3;
+								Float AC_FORMULA_3_VALORE;
+								String AC_FORMULA_4;
+								Float AC_FORMULA_4_VALORE;
+								String AC_FORMULA_5;
+								Float AC_FORMULA_5_VALORE;
+
+								if(collaudo.getRighe().size() > 0) {
+									DocumentoCollaudoRiga riga = (DocumentoCollaudoRiga) collaudo.getRighe().get(0);
+									MisuraFase fase0 = (MisuraFase) riga.getMisureFasi().get(0);
+									List caratteristiche = fase0.getMisuraCaracteriche();
+									Iterator iterCarat = caratteristiche.iterator();
+
+									while(iterCarat.hasNext()) {
+										MisuraCaracteriche misuraCaratterisitca = (MisuraCaracteriche) iterCarat.next();
+										String carattKey = KeyHelper.buildObjectKey(new String[] {KeyHelper.getTokenObjectKey(getKey(), 1), ciclo.getProgressivo(), KeyHelper.getTokenObjectKey(getKey(), 7), KeyHelper.getTokenObjectKey(getKey(), 8)});
+										CicloCollaudoCaratteristica cicloCarratteristica = CicloCollaudoCaratteristica.elementWithKey(carattKey, PersistentObject.NO_LOCK);
+										if(cicloCarratteristica != null) {
+											String descrizioneRidotta = cicloCarratteristica.getDescrizioneCicloNLS().getDescrizioneRidotta();
+											DocumentiCollaudoRilevazioneMisure rilevazione = (DocumentiCollaudoRilevazioneMisure) misuraCaratterisitca.getMisura().get(0);
+											switch (descrizioneRidotta) {
+											case "Al":
+												AL = rilevazione.getValoreRilevato().floatValue();
+												break;
+											case "Al Sol":
+												break;
+											case "As":
+												break;
+											case "B":
+												break;
+											case "Bi":
+												break;
+											case "C":
+												break;
+											case "Ca":
+												break;
+											case "Cb":
+												break;
+											case "Ceq":
+												break;
+											case "Co":
+												break;
+											case "Cr":
+												break;
+											case "Creq":
+												break;
+											case "Cu":
+												break;
+											case "H":
+												break;
+											case "J Fact":
+												break;
+											case "Mn":
+												break;
+											case "Mo":
+												break;
+											case "N":
+												break;
+											case "Nb":
+												break;
+											case "Ni":
+												break;
+											case "O":
+												break;
+											case "P":
+												break;
+											case "Pb":
+												break;
+											case "PCM":
+												break;
+											case "Pre":
+												break;
+											case "S":
+												break;
+											case "Sb":
+												break;
+											case "Si":
+												break;
+											case "Sn":
+												break;
+											case "Ta":
+												break;
+											case "Ti":
+												break;
+											case "V":
+												break;
+											case "W":
+												break;
+											case "X Fact":
+												break;
+											case "Zr":
+												break;
+											case "C + N":
+												break;
+											case "Fe":
+												break;
+											case "Nb + Ta":
+												break;
+											case "Y":
+												break;
+											default:
+												break;
+											}
+										}
+									}
+								}
+							}
+						}
+
+					}else {
+						//non e' da processare
+					}
+				}catch (Exception e) {
+					e.printStackTrace(Trace.excStream);
+				}
+
+			}
+		}
+		return list;
+	}
+
+	public static String adaptProgressivo(String idProgressivo) {
+		int adjustedValue = Integer.parseInt(idProgressivo.trim()) + 6000;
+		String adjustedValueStr = String.valueOf(adjustedValue);
+		String paddedValue = "000000" + adjustedValueStr;
+		return paddedValue.substring(paddedValue.length() - 6);
+	}
+
+	public List<DocumentoCollaudoTestata> recuperaDocumentiCollaudoDaEsportare() {
+		List<DocumentoCollaudoTestata> lista = new ArrayList<DocumentoCollaudoTestata>();
+		PreparedStatement ps = null;
+		List<String> keys = new ArrayList<String>();
+		try {
+			ResultSet rs = null;
+			ps = cEstrazioneDocCollNorme.getStatement();
+			Database db = ConnectionManager.getCurrentDatabase();
+			db.setString(ps, 1, Azienda.getAziendaCorrente());
+			rs = ps.executeQuery();
+			while(rs.next()) {
+				keys.add(KeyHelper.buildObjectKey(new String[] {
+						rs.getString(DocumentoCollaudoTestataTM.ID_AZIENDA),
+						rs.getString(DocumentoCollaudoTestataTM.ID_TIPO_DOCPRV),
+						rs.getString(DocumentoCollaudoTestataTM.ID_ANNO_DOC),
+						rs.getString(DocumentoCollaudoTestataTM.ID_NUMERO_DOC),
+						rs.getString(DocumentoCollaudoTestataTM.ID_RIGA)
+				}));
+			}
+		}catch (SQLException ex) {
+			ex.printStackTrace(Trace.excStream);
+		}finally {
+			try {
+				if(ps != null) {
+					ps.close();
+				}
+			}catch (SQLException e) {
+				e.printStackTrace(Trace.excStream);
+			}
+		}
+		for(String key : keys) {
+			try {
+				lista.add((DocumentoCollaudoTestata) DocumentoCollaudoTestata.elementWithKey(DocumentoCollaudoTestata.class, key, PersistentObject.NO_LOCK));
+			} catch (SQLException e) {
+				e.printStackTrace(Trace.excStream);
+			}
+		}
+		return lista;
+	}
+
+	public static DocumentoCollaudoTestata getDocumentoCollaudoDaRigaOrdAcq(String tipoDoc, OrdineAcquistoRiga ordineAcquistoRiga) {
+		DocumentoCollaudoTestata doc = null;
+		PreparedStatement ps = null;
+		try {
+			ResultSet rs = null;
+			ps = existDCOrdAcqCachStmt.getStatement();
+			Database db = ConnectionManager.getCurrentDatabase();
+			db.setString(ps, 1, tipoDoc);
+			db.setString(ps, 2, ordineAcquistoRiga.getIdAzienda());
+			db.setString(ps, 3, ordineAcquistoRiga.getAnnoDocumento());
+			db.setString(ps, 4, ordineAcquistoRiga.getNumeroDocumento());
+			ps.setInt(5, ordineAcquistoRiga.getNumeroRigaDocumento().intValue());
+			ps.setInt(6, ordineAcquistoRiga.getDettaglioRigaDocumento().intValue());
+			rs = ps.executeQuery();
+			if (rs.next())
+				return (DocumentoCollaudoTestata) DocumentoCollaudoTestata.elementWithKey(DocumentoCollaudoTestata.class, KeyHelper.buildObjectKey(new String[] {
+						rs.getString(DocumentoCollaudoTestataTM.ID_AZIENDA),
+						rs.getString(DocumentoCollaudoTestataTM.ID_TIPO_DOCPRV),
+						rs.getString(DocumentoCollaudoTestataTM.ID_ANNO_DOC),
+						rs.getString(DocumentoCollaudoTestataTM.ID_NUMERO_DOC),
+						rs.getString(DocumentoCollaudoTestataTM.ID_RIGA)
+				}), PersistentObject.NO_LOCK);
+		}
+		catch (SQLException ex) {
+			ex.printStackTrace(Trace.excStream);
+		}finally {
+			try {
+				if(ps != null) {
+					ps.close();
+				}
+			}catch (SQLException e) {
+				e.printStackTrace(Trace.excStream);
+			}
+		}
+		return doc;
+	}
+
+	public OrdineAcquistoRigaPrm getRigaOrdineAcquistoDaNorma(String idNormaQlt) {
+		OrdineAcquistoRigaPrm riga = null;
+		String stmt = " SELECT "+YOrdineAcquistoRigaPrmTM.ID_AZIENDA+","+YOrdineAcquistoRigaPrmTM.ID_ANNO_ORD+","+YOrdineAcquistoRigaPrmTM.ID_NUMERO_ORD+","+YOrdineAcquistoRigaPrmTM.ID_RIGA_ORD+" ";
+		stmt += "FROM "+YOrdineAcquistoRigaPrmTM.TABLE_NAME_EXT+" ";
+		stmt += "WHERE "+YOrdineAcquistoRigaPrmTM.ID_AZIENDA+" = '"+Azienda.getAziendaCorrente()+"' AND "+YOrdineAcquistoRigaPrmTM.ID_NORMA_QLT+" = '"+idNormaQlt+"' ";
+		ResultSet rs = null;
+		PreparedStatement ps = null;
+		try {
+			ps = ConnectionManager.getCurrentConnection().prepareStatement(stmt);
+			rs = ps.executeQuery();
+			if(rs.next()) {
+				riga = (OrdineAcquistoRigaPrm) OrdineAcquistoRigaPrm.elementWithKey(OrdineAcquistoRigaPrm.class, KeyHelper.buildObjectKey(new String[] {
+						rs.getString(YOrdineAcquistoRigaPrmTM.ID_AZIENDA),
+						rs.getString(YOrdineAcquistoRigaPrmTM.ID_ANNO_ORD),
+						rs.getString(YOrdineAcquistoRigaPrmTM.ID_NUMERO_ORD),
+						rs.getString(YOrdineAcquistoRigaPrmTM.ID_RIGA_ORD),
+				}), PersistentObject.NO_LOCK);
+			}
+		}catch (SQLException e) {
+			e.printStackTrace(Trace.excStream);
+		}finally {
+			if(ps != null) {
+				try {
+					ps.close();
+				} catch (SQLException e) {
+					e.printStackTrace(Trace.excStream);
+				}
+			}
+		}
+		return riga;
 	}
 
 	public Dipendente getDipendente(String idDipdenente) {
