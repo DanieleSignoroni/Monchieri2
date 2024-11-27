@@ -6,24 +6,31 @@ import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Vector;
 
-import com.inet.remote.gui.modules.adhoc.page.ca;
+import org.apache.log4j.spi.ErrorCode;
+
+import com.thera.thermfw.base.TimeUtils;
 import com.thera.thermfw.base.Trace;
 import com.thera.thermfw.batch.BatchRunnable;
 import com.thera.thermfw.persist.CachedStatement;
 import com.thera.thermfw.persist.ConnectionDescriptor;
 import com.thera.thermfw.persist.ConnectionManager;
 import com.thera.thermfw.persist.Database;
+import com.thera.thermfw.persist.ErrorCodes;
+import com.thera.thermfw.persist.Factory;
 import com.thera.thermfw.persist.KeyHelper;
 import com.thera.thermfw.persist.PersistentObject;
 import com.thera.thermfw.security.Authorizable;
 
 import it.mame.thip.qualita.controllo.YCicloCollaudoCaratt;
 import it.mame.thip.qualita.controllo.YCicloCollaudoFase;
+import it.mame.thip.qualita.controllo.YMisuraCaracteriche;
 import it.mame.thip.qualita.controllo.YNormeQualita;
 import it.mame.thip.qualita.controllo.YNormeQualitaTM;
 import it.monchieri.thip.acquisti.ordineAC.YOrdineAcquistoRigaPrm;
@@ -39,7 +46,6 @@ import it.thera.thip.qualita.controllo.DocumentiCollaudoRilevazioneMisure;
 import it.thera.thip.qualita.controllo.DocumentoCollaudoRiga;
 import it.thera.thip.qualita.controllo.DocumentoCollaudoTestata;
 import it.thera.thip.qualita.controllo.DocumentoCollaudoTestataTM;
-import it.thera.thip.qualita.controllo.MisuraCaracteriche;
 import it.thera.thip.qualita.controllo.MisuraFase;
 
 /**
@@ -85,33 +91,90 @@ public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 			+ "	AND YNORME_QLT."+YNormeQualitaTM.ID_NORMA+" = ORD_ACQ_RIG_Y."+YOrdineAcquistoRigaPrmTM.ID_NORMA_QLT+"  "
 			+ "WHERE DCT."+DocumentoCollaudoTestataTM.ID_AZIENDA+" = ? ";
 	public static CachedStatement cEstrazioneDocCollNorme = new CachedStatement(SQL_EXTRACT_DOC_COLL_COLL_NORMA);
+	
+	private Timestamp timestampDefault = null;
 
 	@Override
 	protected boolean run() {
-		List stmtInsertNorme = estrazioneAnalisiQcRm();
+		Calendar calendar = Calendar.getInstance();
+		calendar.set(Calendar.YEAR, 2000);
+		calendar.set(Calendar.MONTH, Calendar.JANUARY);
+		calendar.set(Calendar.DAY_OF_MONTH, 1);
+		java.sql.Date dataPartenzaDefault = new java.sql.Date(calendar.getTimeInMillis());
+		timestampDefault = TimeUtils.getTimestamp(dataPartenzaDefault);
+		Timestamp timestamp = null;
+		try {
+			YTimestampElaborazDtsx elabAnalisiQcRm = (YTimestampElaborazDtsx) Factory.createObject(YTimestampElaborazDtsx.class);
+			elabAnalisiQcRm.setKey(KeyHelper.buildObjectKey(new String[] {Azienda.getAziendaCorrente(),"QC_ANALISI_RM"}));
+			boolean onDB = elabAnalisiQcRm.retrieve();
+			if(onDB) {
+				timestamp = elabAnalisiQcRm.getDatiComuni().getTimestampAgg();
+			}else {
+				timestamp = TimeUtils.getTimestamp(dataPartenzaDefault);
+				int rcSave = elabAnalisiQcRm.save();
+				if(rcSave > 0) {
+					ConnectionManager.commit();
+				}else {
+					throw new Exception("Impossibile salvare il record di timestamp elaborazione : "+elabAnalisiQcRm.getKey());
+				}
+			}
+			List<String> stmtInsertNorme = estrazioneAnalisiQcRm(timestamp);
+			int rc = esportaAnalisiQcRm(stmtInsertNorme);
+			if(rc == ErrorCodes.OK) {
+				elabAnalisiQcRm.setDirty(true);
+				if(elabAnalisiQcRm.save() > 0) {
+					ConnectionManager.commit();
+				}
+			}
+		}catch (Exception e) {
+			e.printStackTrace(Trace.excStream);
+		}
+		return false;
+	}
+	
+	protected void esportazioneAnalisiChimicheTarget() {
+		
+	}
+
+	protected int esportaAnalisiQcRm(List<String> stmtInsertNorme) {
+		int result = ErrorCodes.OK;
 		ConnectionDescriptor cnd = YDtsxPtExpOrdEsecRunner.externalConnectionDescriptor(YDtsxPtExpOrdEsecRunner.NOME_DB_EXT, YDtsxPtExpOrdEsecRunner.UTENTE_DB_EXT, YDtsxPtExpOrdEsecRunner.PWD_DB_EXT, YDtsxPtExpOrdEsecRunner.SRV_DB_EXT, YDtsxPtExpOrdEsecRunner.PORTA_DB_EXT);
 		try {
 			if(cnd != null) {
 				ConnectionManager.pushConnection(cnd);
-
+				for(String stmt : stmtInsertNorme) {
+					PreparedStatement ps = cnd.getConnection().prepareStatement(stmt);
+					int rc = ps.executeUpdate();
+					if(rc > 0) {
+						cnd.commit();
+					}
+				}
 			}else {
 				output.print("** Impossibile creare il descrittore di connesione per Target **");
 			}
 		} catch (Throwable ex) {
-			ex.printStackTrace();
+			ex.printStackTrace(Trace.excStream);
+			result = ErrorCodes.GENERIC_ERROR;
 		} finally {
 			if (cnd != null) {
+				if(result == ErrorCodes.GENERIC_ERROR) {
+					try {
+						cnd.rollback();
+					} catch (SQLException e) {
+						e.printStackTrace(Trace.excStream);
+					}
+				}
 				ConnectionManager.popConnection(cnd);
 			}
 		}
-		return false;
+		return result;
 	}
 
 	@SuppressWarnings({ "rawtypes", "unchecked" })
-	protected List estrazioneAnalisiQcRm() {
+	protected List<String> estrazioneAnalisiQcRm(Timestamp timestampElaborazione) {
 		List list = new ArrayList();
 
-		Vector<YNormeQualita> norme = norme();
+		Vector<YNormeQualita> norme = norme(timestampElaborazione);
 		if(norme != null) {
 
 			for (Iterator<YNormeQualita> iterator = norme.iterator(); iterator.hasNext();) {
@@ -992,8 +1055,8 @@ public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 	}
 
 	@SuppressWarnings("rawtypes")
-	protected List estrazioneAnalisiAcciaieria() {
-		List list = new ArrayList();
+	protected List<String> estrazioneAnalisiAcciaieria() {
+		List<String> list = new ArrayList<String>();
 		List<DocumentoCollaudoTestata> collaudi = recuperaDocumentiCollaudoDaEsportare();
 		if(collaudi != null) {
 
@@ -1024,64 +1087,70 @@ public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 								String TIPO_TRAT = "";
 								String NOTE = "";
 								Timestamp TIMESTAMP_AGG = collaudo.getDatiComuni().getTimestampAgg();
-								Float AL;
-								Float ALSOI;
-								Float AS_;
-								Float B;
-								Float BI;
-								Float CA;
-								Float CB;
-								Float CE;
-								Float CO;
-								Float CR;
-								Float CR_EQ;
-								Float CU;
-								Integer H_PPM_O_PERC;
-								Float JF;
-								Float MN;
-								Float MO;
-								Integer N_PPM_O_PERC;
-								Float NB;
-								Float NI;
-								Integer O_PPM_O_PERC;
-								Float P;
-								Float PB;
-								Float PCM;
-								Float PRE;
-								Float S;
-								Float SB;
-								Float SI;
-								Float SN;
-								Float TA;
-								Float TI;
-								Float V;
-								Float W;
-								Float XF;
-								Float ZR;
-								Float C_N;
-								Float FE;
-								Float NB_TA;
-								Float Y;
-								String AC_FORMULA_1;
-								Float AC_FORMULA_1_VALORE;
-								String AC_FORMULA_2;
-								Float AC_FORMULA_2_VALORE;
-								String AC_FORMULA_3;
-								Float AC_FORMULA_3_VALORE;
-								String AC_FORMULA_4;
-								Float AC_FORMULA_4_VALORE;
-								String AC_FORMULA_5;
-								Float AC_FORMULA_5_VALORE;
+								Float AL = 0.f;
+								Float ALSOI= 0.f;
+								Float AS_= 0.f;
+								Float B= 0.f;
+								Float BI= 0.f;
+								Float CA= 0.f;
+								Float CB= 0.f;
+								Float CE= 0.f;
+								Float CO= 0.f;
+								Float CR= 0.f;
+								Float CR_EQ= 0.f;
+								Float CU= 0.f;
+								Integer H_PPM_O_PERC= 0;
+								Float JF= 0.f;
+								Float MN= 0.f;
+								Float MO= 0.f;
+								Integer N_PPM_O_PERC= 0;
+								Float NB= 0.f;
+								Float NI= 0.f;
+								Integer O_PPM_O_PERC= 0;
+								Float P= 0.f;
+								Float PB= 0.f;
+								Float PCM= 0.f;
+								Float PRE= 0.f;
+								Float S= 0.f;
+								Float SB= 0.f;
+								Float SI= 0.f;
+								Float SN= 0.f;
+								Float TA= 0.f;
+								Float TI= 0.f;
+								Float V= 0.f;
+								Float C= 0.f;
+								Float W= 0.f;
+								Float XF= 0.f;
+								Float ZR= 0.f;
+								Float C_N= 0.f;
+								Float FE= 0.f;
+								Float NB_TA= 0.f;
+								Float Y= 0.f;
+								Float H= 0.f;
+								Float N= 0.f;
+								Float O= 0.f;
+								String AC_FORMULA_1 = null;
+								Float AC_FORMULA_1_VALORE= 0.f;
+								String AC_FORMULA_2= null;
+								Float AC_FORMULA_2_VALORE= 0.f;
+								String AC_FORMULA_3= null;
+								Float AC_FORMULA_3_VALORE= 0.f;
+								String AC_FORMULA_4= null;
+								Float AC_FORMULA_4_VALORE= 0.f;
+								String AC_FORMULA_5= null;
+								Float AC_FORMULA_5_VALORE= 0.f;
 
 								if(collaudo.getRighe().size() > 0) {
 									DocumentoCollaudoRiga riga = (DocumentoCollaudoRiga) collaudo.getRighe().get(0);
-									MisuraFase fase0 = (MisuraFase) riga.getMisureFasi().get(0);
-									List caratteristiche = fase0.getMisuraCaracteriche();
+									MisuraFase fase0 = (MisuraFase) riga.getMisureFasi().get(0); //questa e' la fase 'Analisi Chimica'
+									List caratteristiche = fase0.getMisuraCaracteriche(); //queste sono le sue caratteristiche 
 									Iterator iterCarat = caratteristiche.iterator();
 
 									while(iterCarat.hasNext()) {
-										MisuraCaracteriche misuraCaratterisitca = (MisuraCaracteriche) iterCarat.next();
+										YMisuraCaracteriche misuraCaratterisitca = (YMisuraCaracteriche) iterCarat.next(); //la caratteristica, tipo carbonio, manganese
 										String carattKey = KeyHelper.buildObjectKey(new String[] {KeyHelper.getTokenObjectKey(getKey(), 1), ciclo.getProgressivo(), KeyHelper.getTokenObjectKey(getKey(), 7), KeyHelper.getTokenObjectKey(getKey(), 8)});
+
+										//Questa e' a parita di sequenza la corrispondente caratteristica dell'anagrafica ciclo, mi serve per prendere la descrizione ridotta
 										CicloCollaudoCaratteristica cicloCarratteristica = CicloCollaudoCaratteristica.elementWithKey(carattKey, PersistentObject.NO_LOCK);
 										if(cicloCarratteristica != null) {
 											String descrizioneRidotta = cicloCarratteristica.getDescrizioneCicloNLS().getDescrizioneRidotta();
@@ -1091,90 +1160,235 @@ public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 												AL = rilevazione.getValoreRilevato().floatValue();
 												break;
 											case "Al Sol":
+												ALSOI = rilevazione.getValoreRilevato().floatValue();
 												break;
 											case "As":
+												AS_ = rilevazione.getValoreRilevato().floatValue();
 												break;
 											case "B":
+												B = rilevazione.getValoreRilevato().floatValue();
 												break;
 											case "Bi":
+												BI = rilevazione.getValoreRilevato().floatValue();
 												break;
 											case "C":
+												C = rilevazione.getValoreRilevato().floatValue();
 												break;
 											case "Ca":
+												CA = rilevazione.getValoreRilevato().floatValue();
 												break;
 											case "Cb":
+												CB = rilevazione.getValoreRilevato().floatValue();
 												break;
 											case "Ceq":
+												CE = rilevazione.getValoreRilevato().floatValue();
 												break;
 											case "Co":
+												CO = rilevazione.getValoreRilevato().floatValue();
 												break;
 											case "Cr":
+												CR = rilevazione.getValoreRilevato().floatValue();
 												break;
 											case "Creq":
+												CR_EQ = rilevazione.getValoreRilevato().floatValue();
 												break;
 											case "Cu":
+												CU = rilevazione.getValoreRilevato().floatValue();
 												break;
 											case "H":
+												H = rilevazione.getValoreRilevato().floatValue();
+												if(misuraCaratterisitca.getIdUnitaMisura().equals("P%")) {
+													H_PPM_O_PERC = 1;
+												}else {
+													H_PPM_O_PERC = 0;
+												}
 												break;
 											case "J Fact":
+												JF = rilevazione.getValoreRilevato().floatValue();
 												break;
 											case "Mn":
+												MN = rilevazione.getValoreRilevato().floatValue();
 												break;
 											case "Mo":
+												MO = rilevazione.getValoreRilevato().floatValue();
 												break;
 											case "N":
+												N = rilevazione.getValoreRilevato().floatValue();
+												if(misuraCaratterisitca.getIdUnitaMisura().equals("P%")) {
+													N_PPM_O_PERC = 1;
+												}else {
+													N_PPM_O_PERC = 0;
+												}
 												break;
 											case "Nb":
+												NB = rilevazione.getValoreRilevato().floatValue();
 												break;
 											case "Ni":
+												NI = rilevazione.getValoreRilevato().floatValue();
 												break;
 											case "O":
+												O = rilevazione.getValoreRilevato().floatValue();
 												break;
 											case "P":
+												P = rilevazione.getValoreRilevato().floatValue();
 												break;
 											case "Pb":
+												PB = rilevazione.getValoreRilevato().floatValue();
 												break;
 											case "PCM":
+												PCM = rilevazione.getValoreRilevato().floatValue();
 												break;
 											case "Pre":
+												PRE = rilevazione.getValoreRilevato().floatValue();
 												break;
 											case "S":
+												S = rilevazione.getValoreRilevato().floatValue();
 												break;
 											case "Sb":
+												SB = rilevazione.getValoreRilevato().floatValue();
 												break;
 											case "Si":
+												SI = rilevazione.getValoreRilevato().floatValue();
 												break;
 											case "Sn":
+												SN = rilevazione.getValoreRilevato().floatValue();
 												break;
 											case "Ta":
+												TA = rilevazione.getValoreRilevato().floatValue();
 												break;
 											case "Ti":
+												TI = rilevazione.getValoreRilevato().floatValue();
 												break;
 											case "V":
+												V = rilevazione.getValoreRilevato().floatValue();
 												break;
 											case "W":
+												W = rilevazione.getValoreRilevato().floatValue();
 												break;
 											case "X Fact":
+												XF = rilevazione.getValoreRilevato().floatValue();
 												break;
 											case "Zr":
+												ZR = rilevazione.getValoreRilevato().floatValue();
 												break;
 											case "C + N":
+												C_N = rilevazione.getValoreRilevato().floatValue();
 												break;
 											case "Fe":
+												FE = rilevazione.getValoreRilevato().floatValue();
 												break;
 											case "Nb + Ta":
+												NB_TA= rilevazione.getValoreRilevato().floatValue();
 												break;
 											case "Y":
+												Y = rilevazione.getValoreRilevato().floatValue();
 												break;
 											default:
+												if(misuraCaratterisitca.getYFormula() != null &&  !misuraCaratterisitca.getYFormula().isEmpty()) {
+													if(AC_FORMULA_1 == null) {
+														AC_FORMULA_1 = misuraCaratterisitca.getYFormula();
+														AC_FORMULA_1_VALORE = rilevazione.getValoreRilevato().floatValue();
+													}
+													if(AC_FORMULA_2 == null) {
+														AC_FORMULA_2 = misuraCaratterisitca.getYFormula();
+														AC_FORMULA_2_VALORE = rilevazione.getValoreRilevato().floatValue();
+													}
+													if(AC_FORMULA_3 == null) {
+														AC_FORMULA_3 = misuraCaratterisitca.getYFormula();
+														AC_FORMULA_3_VALORE = rilevazione.getValoreRilevato().floatValue();
+													}
+													if(AC_FORMULA_4 == null) {
+														AC_FORMULA_4 = misuraCaratterisitca.getYFormula();
+														AC_FORMULA_4_VALORE = rilevazione.getValoreRilevato().floatValue();
+													}
+													if(AC_FORMULA_5 == null) {
+														AC_FORMULA_5 = misuraCaratterisitca.getYFormula();
+														AC_FORMULA_5_VALORE = rilevazione.getValoreRilevato().floatValue();
+													}
+
+												}
 												break;
 											}
 										}
 									}
 								}
+								String stmt = "INSERT INTO PantheraTarget.dbo.YPT_QC_ANALISI_ACCIAIERIA ("
+										+ "ENTRATA, [DATA], COLATA, ACCIAIERIA, ID, ACCIAIO, ALLIAS_ACCIAIO, "
+										+ "SPECIFICA_1, ELAB_ACCIAIO, TIPO_TRAT, NOTE, TIMESTAMP_AGG, "
+										+ "AL, ALSOI, AS_, B, BI, C, CA, CB, CE, CO, CR, CR_EQ, CU, H, H_PPM_O_PERC, "
+										+ "JF, MN, MO, N, N_PPM_O_PERC, NB, NI, O, O_PPM_O_PERC, P, PB, PCM, PRE, "
+										+ "S, SB, SI, SN, TA, TI, V, W, XF, ZR, C_N, FE, NB_TA, Y, "
+										+ "AC_FORMULA_1, AC_FORMULA_1_VALORE, AC_FORMULA_2, AC_FORMULA_2_VALORE, "
+										+ "AC_FORMULA_3, AC_FORMULA_3_VALORE, AC_FORMULA_4, AC_FORMULA_4_VALORE, "
+										+ "AC_FORMULA_5, AC_FORMULA_5_VALORE, ELABORATO) VALUES ("
+										+ "'" + ENTRATA + "', "
+										+ "'" + DATA + "', "
+										+ "'" + COLATA + "', "
+										+ "'" + ACCIAIERIA + "', "
+										+ "'" + ID + "', "
+										+ "'" + ACCIAIO + "', "
+										+ "'" + ALLIAS_ACCIAIO + "', "
+										+ "'" + SPECIFICA_1 + "', "
+										+ "'" + ELAB_ACCIAIO + "', "
+										+ "'" + TIPO_TRAT + "', "
+										+ "'" + NOTE + "', "
+										+ "'" + TIMESTAMP_AGG + "', "
+										+ AL + ", "
+										+ ALSOI + ", "
+										+ AS_ + ", "
+										+ B + ", "
+										+ BI + ", "
+										+ C + ", "
+										+ CA + ", "
+										+ CB + ", "
+										+ CE + ", "
+										+ CO + ", "
+										+ CR + ", "
+										+ CR_EQ + ", "
+										+ CU + ", "
+										+ H + ", "
+										+ H_PPM_O_PERC + ", "
+										+ JF + ", "
+										+ MN + ", "
+										+ MO + ", "
+										+ N + ", "
+										+ N_PPM_O_PERC + ", "
+										+ NB + ", "
+										+ NI + ", "
+										+ O + ", "
+										+ O_PPM_O_PERC + ", "
+										+ P + ", "
+										+ PB + ", "
+										+ PCM + ", "
+										+ PRE + ", "
+										+ S + ", "
+										+ SB + ", "
+										+ SI + ", "
+										+ SN + ", "
+										+ TA + ", "
+										+ TI + ", "
+										+ V + ", "
+										+ W + ", "
+										+ XF + ", "
+										+ ZR + ", "
+										+ C_N + ", "
+										+ FE + ", "
+										+ NB_TA + ", "
+										+ Y + ", "
+										+ "'" + AC_FORMULA_1 + "', "
+										+ AC_FORMULA_1_VALORE + ", "
+										+ "'" + AC_FORMULA_2 + "', "
+										+ AC_FORMULA_2_VALORE + ", "
+										+ "'" + AC_FORMULA_3 + "', "
+										+ AC_FORMULA_3_VALORE + ", "
+										+ "'" + AC_FORMULA_4 + "', "
+										+ AC_FORMULA_4_VALORE + ", "
+										+ "'" + AC_FORMULA_5 + "', "
+										+ AC_FORMULA_5_VALORE + ", "
+										+ "'0');";
+								list.add(stmt);
 							}
 						}
-
 					}else {
 						//non e' da processare
 					}
@@ -1315,13 +1529,20 @@ public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 	}
 
 	@SuppressWarnings("unchecked")
-	protected Vector<YNormeQualita> norme() {
+	protected Vector<YNormeQualita> norme(Timestamp timestampElaborazione) {
+
 		try {
-			return (YNormeQualita.retrieveList(YNormeQualita.class, " "+YNormeQualitaTM.ID_AZIENDA+" = '"+Azienda.getAziendaCorrente()+"' ", "", false));
+			return (YNormeQualita.retrieveList(YNormeQualita.class, " "+YNormeQualitaTM.ID_AZIENDA+" = '"+Azienda.getAziendaCorrente()+"'"
+					+ " AND "+YNormeQualitaTM.TIMESTAMP_AGG+" > '"+getFormattedTimestampForQuery(timestampElaborazione)+"' ", "", false));
 		} catch (ClassNotFoundException | InstantiationException | IllegalAccessException | SQLException e) {
 			e.printStackTrace(Trace.excStream);
 		}
 		return null;
+	}
+
+	public static String getFormattedTimestampForQuery(Timestamp timestamp) {
+		SimpleDateFormat sdf = new SimpleDateFormat("yyyyMMdd HH:mm:ss");
+		return sdf.format(timestamp);
 	}
 
 

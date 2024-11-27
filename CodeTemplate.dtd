@@ -32,9 +32,7 @@
 <!ATTLIST UserCode
       TYPE (methods | attributes | classes) #IMPLIED>
 <!ENTITY templateVersion "1.0">
-<!ENTITY className "YMisuraFase">
+<!ENTITY className "YTimestampElaborazDtsx">
 <!ENTITY bracesPosition "Up">
 <!ENTITY blockIndent "2">
-<!ENTITY ref1 "YMisuraFaseTM">
-<!ENTITY ref2 "YMisuraFase">
-<!ENTITY ref3 "">
+<!ENTITY ref1 "YTimestampElaborazDtsxPO">

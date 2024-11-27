@@ -1,2 +1,4 @@
 
-Elaborazione file comandi W:\PthDev\Projects\Panthera\Monchieri2\conf\db\Estensioni\00004\tddml\4_CONSTRAINT.TDDML.
+Elaborazione file comandi W:\PthDev\Projects\Panthera\Monchieri2\conf\db\Estensioni\00003\tddml\3_CONSTRAINT.TDDML.
+ALTER TABLE THIPPERS.YDTSX_TIMESTAMP_ELAB_FUNCTION ADD CONSTRAINT Azienda_1894264685 FOREIGN KEY (ID_AZIENDA)
+        REFERENCES THIP.AZIENDE_ESTESE

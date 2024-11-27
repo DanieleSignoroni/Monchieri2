@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<!DOCTYPE TDDML SYSTEM "../../../TDDML.dtd">
+<TDDML>
+  <!-- YDTSX_TIMESTAMP_ELAB_FUNCTION (YDTSX_T): Dtsx - timestamp elaborazione; -->
+  <CreateTable schema="THIPPERS" name="YDTSX_TIMESTAMP_ELAB_FUNCTION" shortname="YDTSX_T">
+    <Column name="ID_AZIENDA" shortname="ID_AZIENDA" type="char" length="3" nullable="no"/>
+    <Column name="STATO" shortname="STATO" type="char" length="1" nullable="no"/>
+    <Column name="R_UTENTE_CRZ" shortname="R_UTENTE_C" type="char" length="20" nullable="yes"/>
+    <Column name="TIMESTAMP_CRZ" shortname="TIMESTAMP_" type="timestamp" nullable="no" default="CURRENT TIMESTAMP"/>
+    <Column name="R_UTENTE_AGG" shortname="R_UTENTE_A" type="char" length="20" nullable="yes"/>
+    <Column name="TIMESTAMP_AGG" shortname="TIMESTAMP0" type="timestamp" nullable="no" default="CURRENT TIMESTAMP"/>
+    <Column name="ID_FUNZIONE" shortname="ID_FUNZION" type="varchar" length="50" nullable="no"/>
+  </CreateTable>
+  <CreateIndex schema="THIPPERS" name="YDTSX_TIMESTAM_I01" tabschema="THIPPERS" tabname="YDTSX_TIMESTAMP_ELAB_FUNCTION" shortname="YDTSX__I01" unique="yes">
+    <IndexCol name="ID_AZIENDA" order="Asc"/>
+    <IndexCol name="ID_FUNZIONE" order="Asc"/>
+  </CreateIndex>
+  <AlterTable schema="THIPPERS" name="YDTSX_TIMESTAMP_ELAB_FUNCTION">
+    <AddPrimaryKey>
+      <PrimaryKey>
+        <ColumnRef name="ID_AZIENDA"/>
+        <ColumnRef name="ID_FUNZIONE"/>
+      </PrimaryKey>
+    </AddPrimaryKey>
+  </AlterTable>
+  <Comment>
+    <CommentTable schema="THIPPERS" name="YDTSX_TIMESTAMP_ELAB_FUNCTION" text="Dtsx - timestamp elaborazione">
+      <CommentColumn name="ID_AZIENDA" text="Azienda"/>
+      <CommentColumn name="STATO" text="Stato"/>
+      <CommentColumn name="R_UTENTE_CRZ" text="Utente creazione"/>
+      <CommentColumn name="TIMESTAMP_CRZ" text="Timestamp creazione"/>
+      <CommentColumn name="R_UTENTE_AGG" text="Utente ultima modifica"/>
+      <CommentColumn name="TIMESTAMP_AGG" text="Timestamp ultima modifica"/>
+      <CommentColumn name="ID_FUNZIONE" text="Funzione"/>
+    </CommentTable>
+    <CommentIndex schema="THIPPERS" name="YDTSX_TIMESTAM_I01" text="Primary Key"/>
+  </Comment>
+  <Grant schema="THIPPERS" name="YDTSX_TIMESTAMP_ELAB_FUNCTION"/>
+</TDDML>

@@ -1,0 +1,6 @@
+<B>2024-11-27 12:39:30</B>
+<BR>Il file <B>W:\PthDev\Projects\Panthera\Monchieri2\conf\db\Estensioni\00003\tddml\3_DROP_YDTSX_TIMESTAMP_ELAB_FUNCTION.TDDML</B> e' stato generato correttamente.
+<BR>Il dizionario <B>YDTSX_TIMESTAMP_ELAB_FUNCTION</B> è stato creato
+<BR>Il file <B>W:\PthDev\Projects\Panthera\Monchieri2\conf\db\Estensioni\00003\tddml\3_YDTSX_TIMESTAMP_ELAB_FUNCTION.TDDML</B> e' stato generato correttamente.
+<BR>Il file <B>W:\PthDev\Projects\Panthera\Monchieri2\conf\db\Estensioni\00003\tddml\3_CONSTRAINT.TDDML</B> e' stato generato correttamente.
+<BR><B>La generazione tabella è completata con successo</B><BR>
