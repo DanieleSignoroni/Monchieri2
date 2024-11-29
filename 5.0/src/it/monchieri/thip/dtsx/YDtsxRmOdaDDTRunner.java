@@ -13,8 +13,6 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Vector;
 
-import org.apache.log4j.spi.ErrorCode;
-
 import com.thera.thermfw.base.TimeUtils;
 import com.thera.thermfw.base.Trace;
 import com.thera.thermfw.batch.BatchRunnable;
@@ -89,9 +87,9 @@ public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 			+ "INNER JOIN "+YNormeQualitaTM.TABLE_NAME+" AS YNORME_QLT ON "
 			+ "	YNORME_QLT."+YNormeQualitaTM.ID_AZIENDA+" = ORD_ACQ_RIG_Y."+YOrdineAcquistoRigaPrmTM.ID_AZIENDA+" "
 			+ "	AND YNORME_QLT."+YNormeQualitaTM.ID_NORMA+" = ORD_ACQ_RIG_Y."+YOrdineAcquistoRigaPrmTM.ID_NORMA_QLT+"  "
-			+ "WHERE DCT."+DocumentoCollaudoTestataTM.ID_AZIENDA+" = ? ";
+			+ "WHERE DCT."+DocumentoCollaudoTestataTM.ID_AZIENDA+" = ? AND "+DocumentoCollaudoTestataTM.TIMESTAMP_AGG+" > ? ";
 	public static CachedStatement cEstrazioneDocCollNorme = new CachedStatement(SQL_EXTRACT_DOC_COLL_COLL_NORMA);
-	
+
 	private Timestamp timestampDefault = null;
 
 	@Override
@@ -102,41 +100,82 @@ public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 		calendar.set(Calendar.DAY_OF_MONTH, 1);
 		java.sql.Date dataPartenzaDefault = new java.sql.Date(calendar.getTimeInMillis());
 		timestampDefault = TimeUtils.getTimestamp(dataPartenzaDefault);
-		Timestamp timestamp = null;
 		try {
-			YTimestampElaborazDtsx elabAnalisiQcRm = (YTimestampElaborazDtsx) Factory.createObject(YTimestampElaborazDtsx.class);
-			elabAnalisiQcRm.setKey(KeyHelper.buildObjectKey(new String[] {Azienda.getAziendaCorrente(),"QC_ANALISI_RM"}));
-			boolean onDB = elabAnalisiQcRm.retrieve();
-			if(onDB) {
-				timestamp = elabAnalisiQcRm.getDatiComuni().getTimestampAgg();
-			}else {
-				timestamp = TimeUtils.getTimestamp(dataPartenzaDefault);
-				int rcSave = elabAnalisiQcRm.save();
-				if(rcSave > 0) {
-					ConnectionManager.commit();
-				}else {
-					throw new Exception("Impossibile salvare il record di timestamp elaborazione : "+elabAnalisiQcRm.getKey());
-				}
-			}
-			List<String> stmtInsertNorme = estrazioneAnalisiQcRm(timestamp);
-			int rc = esportaAnalisiQcRm(stmtInsertNorme);
-			if(rc == ErrorCodes.OK) {
-				elabAnalisiQcRm.setDirty(true);
-				if(elabAnalisiQcRm.save() > 0) {
-					ConnectionManager.commit();
-				}
+			int rc = esportazioneAnalisiChimicheTarget();
+			if(rc != ErrorCodes.OK) {
+				return false;
 			}
 		}catch (Exception e) {
 			e.printStackTrace(Trace.excStream);
 		}
-		return false;
-	}
-	
-	protected void esportazioneAnalisiChimicheTarget() {
-		
+		return true;
 	}
 
-	protected int esportaAnalisiQcRm(List<String> stmtInsertNorme) {
+	protected int esportazioneAnalisiAcciaieriaTarget() throws Exception {
+		Timestamp timestamp = null;
+		YTimestampElaborazDtsx elabAnalisiQcRm = (YTimestampElaborazDtsx) Factory.createObject(YTimestampElaborazDtsx.class);
+		elabAnalisiQcRm.setKey(KeyHelper.buildObjectKey(new String[] {Azienda.getAziendaCorrente(),"QC_ANALISI_ACCIAIERIA"}));
+		boolean onDB = elabAnalisiQcRm.retrieve();
+		if(onDB) {
+			timestamp = elabAnalisiQcRm.getDatiComuni().getTimestampAgg();
+		}else {
+			timestamp = timestampDefault;
+			int rcSave = elabAnalisiQcRm.save();
+			if(rcSave > 0) {
+				ConnectionManager.commit();
+			}else {
+				throw new Exception("Impossibile salvare il record di timestamp elaborazione : "+elabAnalisiQcRm.getKey());
+			}
+		}
+		List<String> stmtInsertNorme = estrazioneAnalisiAcciaieria(timestamp);
+		int rc = eseguiStatementSuConnessioneTarget(stmtInsertNorme);
+		if(rc == ErrorCodes.OK) {
+			elabAnalisiQcRm.setDirty(true);
+			if(elabAnalisiQcRm.save() > 0) {
+				ConnectionManager.commit();
+			}
+		}
+		return rc;
+	}
+
+	/**
+	 * Esporto le 'Analisi Chimiche' verso il database di Target.<br>
+	 * @author Daniele Signoroni 27/11/2024
+	 * <p>
+	 * Prima stesura.<br>
+	 *
+	 * </p>
+	 * @return
+	 * @throws Exception
+	 */
+	protected int esportazioneAnalisiChimicheTarget() throws Exception {
+		Timestamp timestamp = null;
+		YTimestampElaborazDtsx elabAnalisiQcRm = (YTimestampElaborazDtsx) Factory.createObject(YTimestampElaborazDtsx.class);
+		elabAnalisiQcRm.setKey(KeyHelper.buildObjectKey(new String[] {Azienda.getAziendaCorrente(),"QC_ANALISI_RM"}));
+		boolean onDB = elabAnalisiQcRm.retrieve();
+		if(onDB) {
+			timestamp = elabAnalisiQcRm.getDatiComuni().getTimestampAgg();
+		}else {
+			timestamp = timestampDefault;
+			int rcSave = elabAnalisiQcRm.save();
+			if(rcSave > 0) {
+				ConnectionManager.commit();
+			}else {
+				throw new Exception("Impossibile salvare il record di timestamp elaborazione : "+elabAnalisiQcRm.getKey());
+			}
+		}
+		List<String> stmtInsertNorme = estrazioneAnalisiQcRm(timestamp);
+		int rc = eseguiStatementSuConnessioneTarget(stmtInsertNorme);
+		if(rc == ErrorCodes.OK) {
+			elabAnalisiQcRm.setDirty(true);
+			if(elabAnalisiQcRm.save() > 0) {
+				ConnectionManager.commit();
+			}
+		}
+		return rc;
+	}
+
+	protected int eseguiStatementSuConnessioneTarget(List<String> stmtInsertNorme) {
 		int result = ErrorCodes.OK;
 		ConnectionDescriptor cnd = YDtsxPtExpOrdEsecRunner.externalConnectionDescriptor(YDtsxPtExpOrdEsecRunner.NOME_DB_EXT, YDtsxPtExpOrdEsecRunner.UTENTE_DB_EXT, YDtsxPtExpOrdEsecRunner.PWD_DB_EXT, YDtsxPtExpOrdEsecRunner.SRV_DB_EXT, YDtsxPtExpOrdEsecRunner.PORTA_DB_EXT);
 		try {
@@ -1055,9 +1094,9 @@ public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 	}
 
 	@SuppressWarnings("rawtypes")
-	protected List<String> estrazioneAnalisiAcciaieria() {
+	protected List<String> estrazioneAnalisiAcciaieria(Timestamp timestamp) {
 		List<String> list = new ArrayList<String>();
-		List<DocumentoCollaudoTestata> collaudi = recuperaDocumentiCollaudoDaEsportare();
+		List<DocumentoCollaudoTestata> collaudi = recuperaDocumentiCollaudoDaEsportare(timestamp);
 		if(collaudi != null) {
 
 			for (DocumentoCollaudoTestata collaudo : collaudi) {
@@ -1403,12 +1442,11 @@ public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 
 	public static String adaptProgressivo(String idProgressivo) {
 		int adjustedValue = Integer.parseInt(idProgressivo.trim()) + 6000;
-		String adjustedValueStr = String.valueOf(adjustedValue);
-		String paddedValue = "000000" + adjustedValueStr;
-		return paddedValue.substring(paddedValue.length() - 6);
+		String formattedValue = String.format("%06d", adjustedValue);
+		return formattedValue;
 	}
 
-	public List<DocumentoCollaudoTestata> recuperaDocumentiCollaudoDaEsportare() {
+	public List<DocumentoCollaudoTestata> recuperaDocumentiCollaudoDaEsportare(Timestamp timestamp) {
 		List<DocumentoCollaudoTestata> lista = new ArrayList<DocumentoCollaudoTestata>();
 		PreparedStatement ps = null;
 		List<String> keys = new ArrayList<String>();
@@ -1417,6 +1455,7 @@ public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 			ps = cEstrazioneDocCollNorme.getStatement();
 			Database db = ConnectionManager.getCurrentDatabase();
 			db.setString(ps, 1, Azienda.getAziendaCorrente());
+			db.setString(ps, 2, getFormattedTimestampForQuery(timestamp));
 			rs = ps.executeQuery();
 			while(rs.next()) {
 				keys.add(KeyHelper.buildObjectKey(new String[] {
