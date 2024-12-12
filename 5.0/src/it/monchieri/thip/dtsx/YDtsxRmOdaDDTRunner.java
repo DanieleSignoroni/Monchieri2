@@ -8,7 +8,6 @@ import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Calendar;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Vector;
@@ -31,9 +30,19 @@ import it.mame.thip.qualita.controllo.YCicloCollaudoFase;
 import it.mame.thip.qualita.controllo.YMisuraCaracteriche;
 import it.mame.thip.qualita.controllo.YNormeQualita;
 import it.mame.thip.qualita.controllo.YNormeQualitaTM;
+import it.monchieri.thip.acquisti.ordineAC.YOrdineAcquisto;
 import it.monchieri.thip.acquisti.ordineAC.YOrdineAcquistoRigaPrm;
 import it.monchieri.thip.acquisti.ordineAC.YOrdineAcquistoRigaPrmTM;
+import it.monchieri.thip.target.YPTDdtFor;
+import it.monchieri.thip.target.YPTDdtForTM;
+import it.monchieri.thip.target.YPTOrdFor;
+import it.monchieri.thip.target.YPTOrdForTM;
+import it.monchieri.thip.target.YPTQcAnalisiAcciaieria;
+import it.monchieri.thip.target.YPTQcAnalisiAcciaieriaTM;
+import it.monchieri.thip.target.YPTQcAnalisiRm;
+import it.monchieri.thip.target.YPTQcAnalisiRmTM;
 import it.thera.thip.acquisti.ordineAC.OrdineAcquistoRiga;
+import it.thera.thip.acquisti.ordineAC.OrdineAcquistoRigaLottoPrm;
 import it.thera.thip.acquisti.ordineAC.OrdineAcquistoRigaPrm;
 import it.thera.thip.base.azienda.Azienda;
 import it.thera.thip.base.dipendente.Dipendente;
@@ -59,6 +68,12 @@ import it.thera.thip.qualita.controllo.MisuraFase;
 
 public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 
+	public static final String NOME_DB_EXT = "PantheraTarget_test";
+	public static final String UTENTE_DB_EXT = "Panthera";
+	public static final String PWD_DB_EXT = "panthera";
+	public static final String SRV_DB_EXT = "SRVDB.fmonchieri.locale";
+	public static final String PORTA_DB_EXT = "1433";
+
 	protected static final String SQL_EXIST_DC = "SELECT * FROM " + DocumentoCollaudoTestataTM.TABLE_NAME +
 			" WHERE " + DocumentoCollaudoTestataTM.ID_TIPO_DOCPRV + " LIKE ?" +
 			" AND " + DocumentoCollaudoTestataTM.ID_AZIENDA + "= ?" +
@@ -77,7 +92,7 @@ public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 	public static final String SQL_EXTRACT_DOC_COLL_COLL_NORMA = "SELECT "
 			+ "	* "
 			+ "FROM "
-			+ "	THIP."+DocumentoCollaudoTestataTM.TABLE_NAME+" DCT "
+			+ "	"+DocumentoCollaudoTestataTM.TABLE_NAME+" DCT "
 			+ "INNER JOIN "+YOrdineAcquistoRigaPrmTM.TABLE_NAME_EXT+" AS ORD_ACQ_RIG_Y ON "
 			+ "	ORD_ACQ_RIG_Y."+YOrdineAcquistoRigaPrmTM.ID_AZIENDA+" = DCT."+DocumentoCollaudoTestataTM.ID_AZIENDA+" "
 			+ "	AND ORD_ACQ_RIG_Y."+YOrdineAcquistoRigaPrmTM.ID_ANNO_ORD+" = DCT."+DocumentoCollaudoTestataTM.ANNO_ORD_ACQ+" "
@@ -87,22 +102,158 @@ public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 			+ "INNER JOIN "+YNormeQualitaTM.TABLE_NAME+" AS YNORME_QLT ON "
 			+ "	YNORME_QLT."+YNormeQualitaTM.ID_AZIENDA+" = ORD_ACQ_RIG_Y."+YOrdineAcquistoRigaPrmTM.ID_AZIENDA+" "
 			+ "	AND YNORME_QLT."+YNormeQualitaTM.ID_NORMA+" = ORD_ACQ_RIG_Y."+YOrdineAcquistoRigaPrmTM.ID_NORMA_QLT+"  "
-			+ "WHERE DCT."+DocumentoCollaudoTestataTM.ID_AZIENDA+" = ? AND "+DocumentoCollaudoTestataTM.TIMESTAMP_AGG+" > ? ";
+			+ "WHERE DCT."+DocumentoCollaudoTestataTM.ID_AZIENDA+" = ? AND DCT."+DocumentoCollaudoTestataTM.TIMESTAMP_AGG+" > ? ";
 	public static CachedStatement cEstrazioneDocCollNorme = new CachedStatement(SQL_EXTRACT_DOC_COLL_COLL_NORMA);
 
-	private Timestamp timestampDefault = null;
+	public static final String SQL_EXTRACT_ORD_FOR = "SELECT R.* FROM THIP.ORD_ACQ_TES T  "
+			+ "INNER JOIN THIP.ORD_ACQ_RIG R "
+			+ "ON T.ID_AZIENDA = R.ID_AZIENDA  "
+			+ "AND T.ID_ANNO_ORDINE = R.ID_ANNO_ORD  "
+			+ "AND T.ID_NUMERO_ORD = R.ID_NUMERO_ORD  "
+			+ "WHERE T.R_CAU_ORD_ACQ = 'MP' "
+			+ "AND T.STATO = 'V' "
+			+ "AND T.ID_AZIENDA = ? AND R.TIMESTAMP_AGG > ?";
+
+	public static final String SQL_EXTRACT_DDT_FOR = "SELECT "
+			+ "    '000' + SUBSTRING(DOC_ACQ_TES.ID_NUMERO_DOC, 6, 5) AS NUM_DDT_INT, "
+			+ "    DOC_ACQ_TES.ID_ANNO_DOC AS ANNO_DOC, "
+			+ "    BBFORPT.FORCFEST AS COD_CF, "
+			+ "    DOC_ACQ_TES.DATA_DOC AS DATA_DOC, "
+			+ "    DOC_ACQ_TES.R_CAU_DOC_ACQ AS CODICE_CAUSALE, "
+			+ "    CASE WHEN DOC_ACQ_RIG.R_MAGAZZINO IN ('MP', 'CDE') THEN '1.01' ELSE 'N/A' END AS COD_DEP, "
+			+ "    CASE  "
+			+ "      WHEN DOC_ACQ_RIG.R_MAG_LAV_ESN IS NOT NULL THEN DOC_ACQ_RIG.R_MAG_LAV_ESN "
+			+ "      WHEN DOC_ACQ_TES.R_MAGAZZINO_TRA IS NOT NULL THEN DOC_ACQ_TES.R_MAGAZZINO_TRA "
+			+ "      ELSE DOC_ACQ_TES.R_MAG_PRELIEVO "
+			+ "    END AS COD_DEP_2, "
+			+ "    ARTICOLI.R_CLASSE_FISCALE AS COD_ART, "
+			+ "    DOC_ACQ_LOT.ID_ARTICOLO AS DES_RIGA, "
+			+ "    DOC_ACQ_RIG.ID_RIGA_DOC AS NUM_RIGA, "
+			+ "    DOC_ACQ_RIG.R_UM_ACQ AS UM_ACQ, "
+			+ "    DOC_ACQ_RIG.QTA_RCV_UM_PRM / 1000 AS QTA_CONSEGNATA, "
+			+ "    DOC_ACQ_RIG.PREZZO, "
+			+ "    DOC_ACQ_LOT.ID_LOTTO AS LOTTO, "
+			+ "    LEFT(DOC_ACQ_TES.NUM_RIF_FOR, 15) AS NUM_DDT_FORNITORE, "
+			+ "    DOC_ACQ_TES.DATA_RIF_FOR AS DATA_DOC_FORNITORE, "
+			+ "    CONFIGURAZIONI.DESCRIZIONE AS LINGOTTO, "
+			+ "    DOC_ACQ_RIG.R_ANNO_ORD AS RIFERIMENTO_ANNO_ORD_FOR, "
+			+ "    '000' + SUBSTRING(DOC_ACQ_RIG.R_NUMERO_ORD, 5, 5) AS RIFERIMENTO_NUM_ORD_FOR, "
+			+ "    DOC_ACQ_RIG.R_RIGA_ORD AS RIFERIMENTO_RIGA_ORD_FOR, "
+			+ "    MAX(v.MaxTime) AS TIMESTAMP_AGG "
+			+ "FROM THIP.DOC_ACQ_TES DOC_ACQ_TES "
+			+ "INNER JOIN THIP.DOC_ACQ_RIG DOC_ACQ_RIG ON "
+			+ "    DOC_ACQ_TES.ID_AZIENDA = DOC_ACQ_RIG.ID_AZIENDA "
+			+ "    AND DOC_ACQ_TES.ID_ANNO_DOC = DOC_ACQ_RIG.ID_ANNO_DOC "
+			+ "    AND DOC_ACQ_TES.ID_NUMERO_DOC = DOC_ACQ_RIG.ID_NUMERO_DOC "
+			+ "INNER JOIN THIP.FORNITORI_ACQ FORNITORI_ACQ ON "
+			+ "    DOC_ACQ_TES.ID_AZIENDA = FORNITORI_ACQ.ID_AZIENDA "
+			+ "    AND DOC_ACQ_TES.R_FORNITORE = FORNITORI_ACQ.ID_FORNITORE "
+			+ "INNER JOIN FINANCE.BBFORPT BBFORPT ON "
+			+ "    BBFORPT.T01CD = FORNITORI_ACQ.ID_AZIENDA "
+			+ "    AND BBFORPT.FORCD = FORNITORI_ACQ.ID_FORNITORE "
+			+ "INNER JOIN THIP.DOC_ACQ_LOT DOC_ACQ_LOT ON "
+			+ "    DOC_ACQ_RIG.ID_AZIENDA = DOC_ACQ_LOT.ID_AZIENDA "
+			+ "    AND DOC_ACQ_RIG.ID_ANNO_DOC = DOC_ACQ_LOT.ID_ANNO_DOC "
+			+ "    AND DOC_ACQ_RIG.ID_NUMERO_DOC = DOC_ACQ_LOT.ID_NUMERO_DOC "
+			+ "    AND DOC_ACQ_RIG.ID_RIGA_DOC = DOC_ACQ_LOT.ID_RIGA_DOC "
+			+ "INNER JOIN THIP.ARTICOLI ARTICOLI ON "
+			+ "    ARTICOLI.ID_AZIENDA = DOC_ACQ_LOT.ID_AZIENDA "
+			+ "    AND ARTICOLI.ID_ARTICOLO = DOC_ACQ_LOT.ID_ARTICOLO "
+			+ "INNER JOIN THIP.CONFIGURAZIONI CONFIGURAZIONI ON "
+			+ "    CONFIGURAZIONI.ID_AZIENDA = DOC_ACQ_RIG.ID_AZIENDA "
+			+ "    AND CONFIGURAZIONI.ID_CONFIG = DOC_ACQ_RIG.R_CONFIGURAZIONE "
+			+ "CROSS APPLY (VALUES  "
+			+ "    (DOC_ACQ_TES.TIMESTAMP_AGG), "
+			+ "    (DOC_ACQ_RIG.TIMESTAMP_AGG), "
+			+ "    (DOC_ACQ_LOT.TIMESTAMP_AGG), "
+			+ "    (CONFIGURAZIONI.TIMESTAMP_AGG) "
+			+ ") AS v(MaxTime) "
+			+ "WHERE "
+			+ "    DOC_ACQ_TES.ID_ANNO_DOC >= YEAR(CURRENT_TIMESTAMP) - 1 "
+			+ "    AND DOC_ACQ_TES.R_CAU_DOC_ACQ IN ('MP', 'MPE') "
+			+ "    AND DOC_ACQ_RIG.ID_DET_RIGA_DOC = 0 "
+			+ "    AND DOC_ACQ_LOT.ID_DET_RIGA_DOC = 0 "
+			+ "    AND DOC_ACQ_TES.ID_AZIENDA = ? AND DOC_ACQ_LOT.TIMESTAMP_AGG > ? "
+			+ "GROUP BY "
+			+ "    '000' + SUBSTRING(DOC_ACQ_TES.ID_NUMERO_DOC, 6, 5), "
+			+ "    DOC_ACQ_TES.ID_ANNO_DOC, "
+			+ "    BBFORPT.FORCFEST, "
+			+ "    DOC_ACQ_TES.DATA_DOC, "
+			+ "    DOC_ACQ_TES.R_CAU_DOC_ACQ, "
+			+ "    CASE WHEN DOC_ACQ_RIG.R_MAGAZZINO IN ('MP', 'CDE') THEN '1.01' ELSE 'N/A' END, "
+			+ "    CASE  "
+			+ "      WHEN DOC_ACQ_RIG.R_MAG_LAV_ESN IS NOT NULL THEN DOC_ACQ_RIG.R_MAG_LAV_ESN "
+			+ "      WHEN DOC_ACQ_TES.R_MAGAZZINO_TRA IS NOT NULL THEN DOC_ACQ_TES.R_MAGAZZINO_TRA "
+			+ "      ELSE DOC_ACQ_TES.R_MAG_PRELIEVO "
+			+ "    END, "
+			+ "    ARTICOLI.R_CLASSE_FISCALE, "
+			+ "    DOC_ACQ_LOT.ID_ARTICOLO, "
+			+ "    DOC_ACQ_RIG.ID_RIGA_DOC, "
+			+ "    DOC_ACQ_RIG.R_UM_ACQ, "
+			+ "    DOC_ACQ_RIG.QTA_RCV_UM_PRM / 1000, "
+			+ "    DOC_ACQ_RIG.PREZZO, "
+			+ "    DOC_ACQ_LOT.ID_LOTTO, "
+			+ "    LEFT(DOC_ACQ_TES.NUM_RIF_FOR, 15), "
+			+ "    DOC_ACQ_TES.DATA_RIF_FOR, "
+			+ "    CONFIGURAZIONI.DESCRIZIONE, "
+			+ "    DOC_ACQ_RIG.R_ANNO_ORD, "
+			+ "    '000' + SUBSTRING(DOC_ACQ_RIG.R_NUMERO_ORD, 5, 5), "
+			+ "    DOC_ACQ_RIG.R_RIGA_ORD ";
+
+	protected Date iDataEstrazioneAnalisiAcc;
+
+	protected Date iDataEstrazioneAnalisiRm;
+
+	protected Date iDataEstrazioneOrdFor;
+
+	protected Date iDataEstrazioneDdtFor;
+
+	public Date getDataEstrazioneAnalisiAcc() {
+		return iDataEstrazioneAnalisiAcc;
+	}
+
+	public void setDataEstrazioneAnalisiAcc(Date iDataEstrazioneAnalisiAcc) {
+		this.iDataEstrazioneAnalisiAcc = iDataEstrazioneAnalisiAcc;
+	}
+
+	public Date getDataEstrazioneAnalisiRm() {
+		return iDataEstrazioneAnalisiRm;
+	}
+
+	public void setDataEstrazioneAnalisiRm(Date iDataEstrazioneAnalisiRm) {
+		this.iDataEstrazioneAnalisiRm = iDataEstrazioneAnalisiRm;
+	}
+
+	public Date getDataEstrazioneOrdFor() {
+		return iDataEstrazioneOrdFor;
+	}
+
+	public void setDataEstrazioneOrdFor(Date iDataEstrazioneOrdFor) {
+		this.iDataEstrazioneOrdFor = iDataEstrazioneOrdFor;
+	}
+
+	public Date getDataEstrazioneDdtFor() {
+		return iDataEstrazioneDdtFor;
+	}
+
+	public void setDataEstrazioneDdtFor(Date iDataEstrazioneDdtFor) {
+		this.iDataEstrazioneDdtFor = iDataEstrazioneDdtFor;
+	}
 
 	@Override
 	protected boolean run() {
-		Calendar calendar = Calendar.getInstance();
-		calendar.set(Calendar.YEAR, 2000);
-		calendar.set(Calendar.MONTH, Calendar.JANUARY);
-		calendar.set(Calendar.DAY_OF_MONTH, 1);
-		java.sql.Date dataPartenzaDefault = new java.sql.Date(calendar.getTimeInMillis());
-		timestampDefault = TimeUtils.getTimestamp(dataPartenzaDefault);
+		if(getBatchJob().getFromScheduledJob()) {
+			setDataEstrazioneAnalisiAcc(null);
+			setDataEstrazioneAnalisiRm(null);
+			setDataEstrazioneDdtFor(null);
+			setDataEstrazioneOrdFor(null);
+		}
 		try {
 			int rc = esportazioneAnalisiChimicheTarget();
-			if(rc != ErrorCodes.OK) {
+			rc += esportazioneOrdFor();
+			rc += esportazioneOrdDdt();
+			rc += esportazioneAnalisiAcciaieriaTarget();
+			if(rc < ErrorCodes.OK) {
 				return false;
 			}
 		}catch (Exception e) {
@@ -111,30 +262,163 @@ public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 		return true;
 	}
 
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	protected int esportazioneOrdDdt() throws Exception {
+		output.println();
+		output.println(" ----------------- Estrazione "+YPTDdtForTM.TABLE_NAME+" -------------------- ");
+		Timestamp timestamp = null;
+		YTimestampElaborazDtsx elabAnalisiQcRm = (YTimestampElaborazDtsx) Factory.createObject(YTimestampElaborazDtsx.class);
+		elabAnalisiQcRm.setKey(KeyHelper.buildObjectKey(new String[] {Azienda.getAziendaCorrente(),"YPT_DDT_FOR"}));
+		elabAnalisiQcRm.retrieve();
+		if(getDataEstrazioneAnalisiAcc() != null)
+			timestamp = TimeUtils.getTimestamp(getDataEstrazioneDdtFor());
+		else 
+			timestamp = elabAnalisiQcRm.getDatiComuniEstesi().getTimestampAgg();
+		output.println("  Estraggo dati DDT_FOR con TIMESTAMP_AGG > "+timestamp.toString());
+		List ordFors = estrazioneDdtFor(timestamp);
+		output.println("  Estratte "+ordFors.size()+" righe ");
+		output.println("  Esportazione "+YPTDdtForTM.TABLE_NAME+" verso Target ");
+		int rc = esportaOggettiVersoTarget(ordFors);
+		if(rc >= ErrorCodes.OK) {
+			elabAnalisiQcRm.setDirty(true);
+			if(elabAnalisiQcRm.save() > 0) {
+				ConnectionManager.commit();
+			}
+
+			//qui eseguo sql 
+			ConnectionDescriptor cnd = YDtsxPtExpOrdEsecRunner.externalConnectionDescriptor(
+					NOME_DB_EXT,
+					UTENTE_DB_EXT,
+					PWD_DB_EXT, 
+					SRV_DB_EXT, 
+					PORTA_DB_EXT);
+			try {
+				if(cnd != null) {
+					ConnectionManager.pushConnection(cnd);
+					riattiva_DDT_FOR(cnd);
+					riattiva_DDT_FOR_1(cnd);
+					YPT_DDT_FOR_set_Elaborato_To_X(cnd);
+				}
+			} catch (Throwable ex) {
+				ex.printStackTrace(Trace.excStream);
+			} finally {
+				if (cnd != null) {
+
+					ConnectionManager.popConnection(cnd);
+				}
+			}
+
+		}
+		output.println("  Esportazione verso "+YPTDdtForTM.TABLE_NAME+" avvenuta con "+(rc > 0 ? "successo" : "errori"));
+		output.println(" ----------------- Fine estrazione "+YPTDdtForTM.TABLE_NAME+" -------------------- ");
+		output.println();
+		return rc;
+	}
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
+	protected int esportazioneOrdFor() throws Exception {
+		output.println();
+		output.println(" ----------------- Estrazione "+YPTOrdForTM.TABLE_NAME+" -------------------- ");
+		Timestamp timestamp = null;
+		YTimestampElaborazDtsx elabAnalisiQcRm = (YTimestampElaborazDtsx) Factory.createObject(YTimestampElaborazDtsx.class);
+		elabAnalisiQcRm.setKey(KeyHelper.buildObjectKey(new String[] {Azienda.getAziendaCorrente(),"YPT_ORD_FOR"}));
+		elabAnalisiQcRm.retrieve();
+		if(getDataEstrazioneOrdFor() != null)
+			timestamp = TimeUtils.getTimestamp(getDataEstrazioneAnalisiAcc());
+		else 
+			timestamp = elabAnalisiQcRm.getDatiComuniEstesi().getTimestampAgg();
+		output.println("  Estraggo dati ORD_FOR con TIMESTAMP_AGG > "+timestamp.toString());
+		List ordFors = estrazioneOrdFor(timestamp);
+		output.println("  Estratte "+ordFors.size()+" righe ");
+		output.println("  Esportazione "+YPTOrdForTM.TABLE_NAME+" verso Target ");
+		int rc = esportaOggettiVersoTarget(ordFors);
+		if(rc >= ErrorCodes.OK) {
+			elabAnalisiQcRm.setDirty(true);
+			if(elabAnalisiQcRm.save() > 0) {
+				ConnectionManager.commit();
+			}
+
+			ConnectionDescriptor cnd = YDtsxPtExpOrdEsecRunner.externalConnectionDescriptor(
+					NOME_DB_EXT,
+					UTENTE_DB_EXT,
+					PWD_DB_EXT, 
+					SRV_DB_EXT, 
+					PORTA_DB_EXT);
+			try {
+				if(cnd != null) {
+					ConnectionManager.pushConnection(cnd);
+					riattiva_ORD_FOR(cnd);
+					riattiva_ORD_FOR_1(cnd);
+					YPT_ORD_FOR_set_Elaborato_To_X(cnd);
+				}
+			} catch (Throwable ex) {
+				ex.printStackTrace(Trace.excStream);
+			} finally {
+				if (cnd != null) {
+
+					ConnectionManager.popConnection(cnd);
+				}
+			}
+
+		}
+		output.println("  Esportazione verso "+YPTOrdForTM.TABLE_NAME+" avvenuta con "+(rc > 0 ? "successo" : "errori"));
+		output.println(" ----------------- Fine estrazione "+YPTOrdForTM.TABLE_NAME+" -------------------- ");
+		output.println();
+		return rc;
+	}
+
+	@SuppressWarnings({ "rawtypes", "unchecked" })
 	protected int esportazioneAnalisiAcciaieriaTarget() throws Exception {
+		output.println();
+		output.println(" ----------------- Estrazione "+YPTQcAnalisiAcciaieriaTM.TABLE_NAME+" -------------------- ");
 		Timestamp timestamp = null;
 		YTimestampElaborazDtsx elabAnalisiQcRm = (YTimestampElaborazDtsx) Factory.createObject(YTimestampElaborazDtsx.class);
 		elabAnalisiQcRm.setKey(KeyHelper.buildObjectKey(new String[] {Azienda.getAziendaCorrente(),"QC_ANALISI_ACCIAIERIA"}));
-		boolean onDB = elabAnalisiQcRm.retrieve();
-		if(onDB) {
-			timestamp = elabAnalisiQcRm.getDatiComuni().getTimestampAgg();
-		}else {
-			timestamp = timestampDefault;
-			int rcSave = elabAnalisiQcRm.save();
-			if(rcSave > 0) {
-				ConnectionManager.commit();
-			}else {
-				throw new Exception("Impossibile salvare il record di timestamp elaborazione : "+elabAnalisiQcRm.getKey());
-			}
-		}
-		List<String> stmtInsertNorme = estrazioneAnalisiAcciaieria(timestamp);
-		int rc = eseguiStatementSuConnessioneTarget(stmtInsertNorme);
+		elabAnalisiQcRm.retrieve();
+		if(getDataEstrazioneAnalisiAcc() != null)
+			timestamp = TimeUtils.getTimestamp(getDataEstrazioneAnalisiAcc());
+		else 
+			timestamp = elabAnalisiQcRm.getDatiComuniEstesi().getTimestampAgg();
+
+		output.println("  Estraggo dati con TIMESTAMP_AGG > "+timestamp.toString());
+		List stmtInsertNorme = estrazioneAnalisiAcciaieria(timestamp);
+		output.println("  Estratte "+stmtInsertNorme.size()+" righe ");
+		output.println("  Esportazione "+YPTQcAnalisiAcciaieriaTM.TABLE_NAME+" verso Target ");
+		int rc = esportaOggettiVersoTarget(stmtInsertNorme);
 		if(rc == ErrorCodes.OK) {
 			elabAnalisiQcRm.setDirty(true);
 			if(elabAnalisiQcRm.save() > 0) {
 				ConnectionManager.commit();
 			}
+
+			ConnectionDescriptor cnd = YDtsxPtExpOrdEsecRunner.externalConnectionDescriptor(
+					NOME_DB_EXT,
+					UTENTE_DB_EXT,
+					PWD_DB_EXT, 
+					SRV_DB_EXT, 
+					PORTA_DB_EXT);
+			try {
+				if(cnd != null) {
+					ConnectionManager.pushConnection(cnd);
+					riattiva_QC_ANALISI_ACCIAIERIA(cnd);
+					riattiva_QC_ANALISI_ACCIAIERIA_1(cnd);
+					YPT_QC_ANALISI_ACCIAIERIA_set_Elaborato_To_X(cnd);
+					riattiva_DDT_FOR_1_1(cnd);
+					YPT_DDT_FOR_set_Elaborato_To_X(cnd);
+				}
+			} catch (Throwable ex) {
+				ex.printStackTrace(Trace.excStream);
+			} finally {
+				if (cnd != null) {
+
+					ConnectionManager.popConnection(cnd);
+				}
+			}
+
 		}
+		output.println("  Esportazione verso "+YPTQcAnalisiAcciaieriaTM.TABLE_NAME+" avvenuta con "+(rc > 0 ? "successo" : "errori"));
+		output.println(" ----------------- Fine estrazione "+YPTQcAnalisiAcciaieriaTM.TABLE_NAME+" -------------------- ");
+		output.println();
 		return rc;
 	}
 
@@ -148,48 +432,75 @@ public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 	 * @return
 	 * @throws Exception
 	 */
+	@SuppressWarnings({ "rawtypes", "unchecked" })
 	protected int esportazioneAnalisiChimicheTarget() throws Exception {
+		output.println();
+		output.println(" ----------------- Estrazione "+YPTQcAnalisiRmTM.TABLE_NAME+" -------------------- ");
 		Timestamp timestamp = null;
 		YTimestampElaborazDtsx elabAnalisiQcRm = (YTimestampElaborazDtsx) Factory.createObject(YTimestampElaborazDtsx.class);
 		elabAnalisiQcRm.setKey(KeyHelper.buildObjectKey(new String[] {Azienda.getAziendaCorrente(),"QC_ANALISI_RM"}));
-		boolean onDB = elabAnalisiQcRm.retrieve();
-		if(onDB) {
-			timestamp = elabAnalisiQcRm.getDatiComuni().getTimestampAgg();
-		}else {
-			timestamp = timestampDefault;
-			int rcSave = elabAnalisiQcRm.save();
-			if(rcSave > 0) {
-				ConnectionManager.commit();
-			}else {
-				throw new Exception("Impossibile salvare il record di timestamp elaborazione : "+elabAnalisiQcRm.getKey());
-			}
-		}
-		List<String> stmtInsertNorme = estrazioneAnalisiQcRm(timestamp);
-		int rc = eseguiStatementSuConnessioneTarget(stmtInsertNorme);
+		elabAnalisiQcRm.retrieve();
+		if(getDataEstrazioneAnalisiAcc() != null)
+			timestamp = TimeUtils.getTimestamp(getDataEstrazioneAnalisiRm());
+		else 
+			timestamp = elabAnalisiQcRm.getDatiComuniEstesi().getTimestampAgg();
+		output.println("  Estraggo "+YNormeQualitaTM.TABLE_NAME+" con TIMESTAMP_AGG > "+timestamp.toString());
+		List analisiChimiche = estrazioneAnalisiQcRm(timestamp);
+		output.println("  Estratte "+analisiChimiche.size()+" "+YNormeQualitaTM.TABLE_NAME+" ");
+		output.println("  Esportazione "+YPTQcAnalisiRmTM.TABLE_NAME+" verso Target ");
+		int rc = esportaOggettiVersoTarget(analisiChimiche);
 		if(rc == ErrorCodes.OK) {
 			elabAnalisiQcRm.setDirty(true);
 			if(elabAnalisiQcRm.save() > 0) {
 				ConnectionManager.commit();
 			}
+
+			ConnectionDescriptor cnd = YDtsxPtExpOrdEsecRunner.externalConnectionDescriptor(
+					NOME_DB_EXT,
+					UTENTE_DB_EXT,
+					PWD_DB_EXT, 
+					SRV_DB_EXT, 
+					PORTA_DB_EXT);
+			try {
+				if(cnd != null) {
+					ConnectionManager.pushConnection(cnd);
+					riattiva_QC_ANALISI_RM(cnd);
+					riattiva_QC_ANALISI_RM_2(cnd);
+					YPT_QC_ANALISI_RM_set_Elaborato_To_X(cnd);
+				}
+			} catch (Throwable ex) {
+				ex.printStackTrace(Trace.excStream);
+			} finally {
+				if (cnd != null) {
+
+					ConnectionManager.popConnection(cnd);
+				}
+			}
+
 		}
+		output.println("  Esportazione verso "+YPTQcAnalisiRmTM.TABLE_NAME+" avvenuta con "+(rc > 0 ? "successo" : "errori"));
+		output.println(" ----------------- Fine estrazione "+YPTQcAnalisiRmTM.TABLE_NAME+" -------------------- ");
+		output.println();
 		return rc;
 	}
 
-	protected int eseguiStatementSuConnessioneTarget(List<String> stmtInsertNorme) {
+	protected static int esportaOggettiVersoTarget(List<PersistentObject> pos) {
 		int result = ErrorCodes.OK;
-		ConnectionDescriptor cnd = YDtsxPtExpOrdEsecRunner.externalConnectionDescriptor(YDtsxPtExpOrdEsecRunner.NOME_DB_EXT, YDtsxPtExpOrdEsecRunner.UTENTE_DB_EXT, YDtsxPtExpOrdEsecRunner.PWD_DB_EXT, YDtsxPtExpOrdEsecRunner.SRV_DB_EXT, YDtsxPtExpOrdEsecRunner.PORTA_DB_EXT);
+		if(pos.size() == 0)
+			return result;
+		ConnectionDescriptor cnd = YDtsxPtExpOrdEsecRunner.externalConnectionDescriptor(
+				NOME_DB_EXT,
+				UTENTE_DB_EXT,
+				PWD_DB_EXT, 
+				SRV_DB_EXT, 
+				PORTA_DB_EXT);
 		try {
 			if(cnd != null) {
 				ConnectionManager.pushConnection(cnd);
-				for(String stmt : stmtInsertNorme) {
-					PreparedStatement ps = cnd.getConnection().prepareStatement(stmt);
-					int rc = ps.executeUpdate();
-					if(rc > 0) {
-						cnd.commit();
-					}
+				for(PersistentObject analisi : pos) {
+					result += analisi.save();
 				}
-			}else {
-				output.print("** Impossibile creare il descrittore di connesione per Target **");
+				cnd.commit();
 			}
 		} catch (Throwable ex) {
 			ex.printStackTrace(Trace.excStream);
@@ -209,8 +520,112 @@ public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 		return result;
 	}
 
+	@SuppressWarnings("rawtypes")
+	protected List estrazioneDdtFor(Timestamp timestamp) {
+		List<YPTDdtFor> ddts = new ArrayList<YPTDdtFor>();
+		PreparedStatement ps = null;
+		try {
+			ResultSet rs = null;
+			ps = ConnectionManager.getCurrentConnection().prepareStatement(SQL_EXTRACT_DDT_FOR);
+			Database db = ConnectionManager.getCurrentDatabase();
+			db.setString(ps, 1, Azienda.getAziendaCorrente());
+			db.setString(ps, 2, getFormattedTimestampForQuery(timestamp));
+			rs = ps.executeQuery();
+			while(rs.next()) {
+				YPTDdtFor ddt = (YPTDdtFor) Factory.createObject(YPTDdtFor.class);
+				ddt.setNumDdtInt(rs.getString("NUM_DDT_INT"));
+				ddt.setAnnoDoc(rs.getString("ANNO_DOC"));
+				ddt.setCodCf(rs.getString("COD_CF"));
+				ddt.setDataDoc(rs.getDate("DATA_DOC"));
+				ddt.setCodiceCausale(rs.getString("CODICE_CAUSALE"));
+				ddt.setCodDep(rs.getString("COD_DEP"));
+				ddt.setCodDep(rs.getString("COD_DEP_2"));
+				ddt.setCodArt(rs.getString("COD_ART"));
+				ddt.setDesRiga(rs.getString("DES_RIGA"));
+				ddt.setNumRiga(rs.getInt("NUM_RIGA"));
+				ddt.setUmAcq(rs.getString("UM_ACQ"));
+				ddt.setQtaConsegnata(rs.getBigDecimal("QTA_CONSEGNATA"));
+				ddt.setPrezzo(rs.getBigDecimal("PREZZO"));
+				ddt.setLotto(rs.getString("LOTTO"));
+				ddt.setNumDdtFornitore(rs.getString("NUM_DDT_FORNITORE"));
+				ddt.setDataDocFornitore(rs.getDate("DATA_DOC_FORNITORE"));
+				ddt.setLingotto(rs.getString("LINGOTTO"));
+				ddt.setRiferimentoAnnoOrdFor(rs.getString("RIFERIMENTO_ANNO_ORD_FOR"));
+				ddt.setRiferimentoNumOrdFor(rs.getString("RIFERIMENTO_NUM_ORD_FOR"));
+				ddt.setRiferimentoRigaOrdFor(rs.getInt("RIFERIMENTO_RIGA_ORD_FOR"));
+				ddt.setTimestampAgg(rs.getTimestamp("TIMESTAMP_AGG"));
+				ddt.setElaborato("0");
+
+				ddts.add(ddt);
+			}
+		}catch (SQLException ex) {
+			ex.printStackTrace(Trace.excStream);
+		}finally {
+			try {
+				if(ps != null) {
+					ps.close();
+				}
+			}catch (SQLException e) {
+				e.printStackTrace(Trace.excStream);
+			}
+		}
+		return ddts;
+	}
+
+	@SuppressWarnings("rawtypes")
+	protected List estrazioneOrdFor(Timestamp timestamp) {
+		List<YPTOrdFor> ordFors = new ArrayList<YPTOrdFor>();
+		List<YOrdineAcquistoRigaPrm> righe = getRigheAcquistoPerEsportazioneOrdFor(timestamp);
+		for(YOrdineAcquistoRigaPrm riga : righe) {
+			Timestamp timestampAgg = null;
+			YOrdineAcquisto testata = (YOrdineAcquisto) riga.getTestata();
+
+			timestampAgg = testata.getDatiComuni().getTimestampAgg();
+
+			if(riga.getDatiComuni().getTimestampAgg().compareTo(timestamp) > 0) {
+				timestampAgg = riga.getDatiComuni().getTimestampAgg();
+			}
+
+			YPTOrdFor ordFor = (YPTOrdFor) Factory.createObject(YPTOrdFor.class);
+			ordFor.setAnnoDoc(testata.getAnnoDocumento());
+			String numDoc = "000"+testata.getNumeroDocumento().substring(4, 9);
+			ordFor.setNumDoc(numDoc);
+			ordFor.setNumRiga(riga.getNumeroRigaDocumento());
+			ordFor.setDataDoc(testata.getDataDocumento());
+			ordFor.setCodArt(riga.getArticolo().getIdClasseFiscale());
+
+			ordFor.setCodCf(testata.getFornitore().getCodSistemaInfEsterno());
+
+			if(riga.getRigheLotto().size() > 0) {
+				OrdineAcquistoRigaLottoPrm rigaLotto = (OrdineAcquistoRigaLottoPrm) riga.getRigheLotto().get(0);
+				ordFor.setDesRiga(rigaLotto.getIdArticolo());
+				ordFor.setQuantUmBase(rigaLotto.getQuantitaOrdinata().getQuantitaInUMRif());
+
+				if(rigaLotto.getDatiComuni().getTimestampAgg().compareTo(timestamp) > 0) {
+					timestampAgg = riga.getDatiComuni().getTimestampAgg();
+				}
+			}else {
+				continue;
+			}
+
+			ordFor.setUmBase(riga.getIdUMRif());
+			ordFor.setPrezzo(riga.getPrezzo());
+			ordFor.setNoteInt(riga.getNota());
+			ordFor.setDataConsRiga(riga.getDataConsegnaConfermata());
+			ordFor.setId(riga.getIdNormaQlt());
+
+			ordFor.setTimestampAgg(timestampAgg);
+
+			ordFor.setElaborato("0");
+
+			ordFors.add(ordFor);
+
+		}
+		return ordFors;
+	}
+
 	@SuppressWarnings({ "rawtypes", "unchecked" })
-	protected List<String> estrazioneAnalisiQcRm(Timestamp timestampElaborazione) {
+	protected List<YPTQcAnalisiRm> estrazioneAnalisiQcRm(Timestamp timestampElaborazione) {
 		List list = new ArrayList();
 
 		Vector<YNormeQualita> norme = norme(timestampElaborazione);
@@ -239,7 +654,6 @@ public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 					String NOTE_3 = norma.getNote3();
 					Integer FLAG_PR_SPE = norma.getProcessoSpec() ? 1 : 0;
 					String DOC_REV = norma.getRevisione();
-					String RM_NUM = norma.getRMOrNum();
 					String STD_ACC = norma.getSpecRifCod1();
 					String STD_ACC_2 = norma.getSpecRifCod2();
 					String STD_ACC_3 = norma.getSpecRifCod3();
@@ -662,26 +1076,41 @@ public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 									if(caratteristica.getYFormula() != null &&  !caratteristica.getYFormula().isEmpty()) {
 										if(AC_FORMULA_1 == null) {
 											AC_FORMULA_1 = caratteristica.getYFormula();
+											if(AC_FORMULA_1 != null  && AC_FORMULA_1.length() > 15) {
+												AC_FORMULA_1 = AC_FORMULA_1.substring(0,15);
+											}
 											AC_FORMULA_1_MIN = LIM_INF_TOL;
 											AC_FORMULA_1_MAX = LIM_SUP_TOL;
 										}
 										if(AC_FORMULA_2 == null) {
 											AC_FORMULA_2 = caratteristica.getYFormula();
+											if(AC_FORMULA_2 != null  && AC_FORMULA_2.length() > 15) {
+												AC_FORMULA_2 = AC_FORMULA_2.substring(0,15);
+											}
 											AC_FORMULA_2_MIN = LIM_INF_TOL;
 											AC_FORMULA_2_MAX = LIM_SUP_TOL;
 										}
 										if(AC_FORMULA_3 == null) {
 											AC_FORMULA_3 = caratteristica.getYFormula();
+											if(AC_FORMULA_3 != null  && AC_FORMULA_3.length() > 15) {
+												AC_FORMULA_3 = AC_FORMULA_3.substring(0,15);
+											}
 											AC_FORMULA_3_MIN = LIM_INF_TOL;
 											AC_FORMULA_3_MAX = LIM_SUP_TOL;
 										}
 										if(AC_FORMULA_4 == null) {
 											AC_FORMULA_4 = caratteristica.getYFormula();
+											if(AC_FORMULA_4 != null  && AC_FORMULA_4.length() > 15) {
+												AC_FORMULA_4 = AC_FORMULA_4.substring(0,15);
+											}
 											AC_FORMULA_4_MIN = LIM_INF_TOL;
 											AC_FORMULA_4_MAX = LIM_SUP_TOL;
 										}
 										if(AC_FORMULA_5 == null) {
 											AC_FORMULA_5 = caratteristica.getYFormula();
+											if(AC_FORMULA_5 != null  && AC_FORMULA_5.length() > 15) {
+												AC_FORMULA_5 = AC_FORMULA_5.substring(0,15);
+											}
 											AC_FORMULA_5_MIN = LIM_INF_TOL;
 											AC_FORMULA_5_MAX = LIM_SUP_TOL;
 										}
@@ -693,395 +1122,213 @@ public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 						}
 					}
 
-					//creare lo statement e metterlo nella list
-					String stmt = "INSERT"
-							+ "	INTO"
-							+ "	dbo.YPT_QC_ANALISI_RM (ALLIAS_ACCIAIO,"
-							+ "	ACCIAIO,"
-							+ "	TP_FUS_ACC,"
-							+ "	DOC_REV_APPR,"
-							+ "	DOC_REV_PREP,"
-							+ "	ID,"
-							+ "	NOTE,"
-							+ "	NOTE_2,"
-							+ "	NOTE_3,"
-							+ "	FLAG_PR_SPE,"
-							+ "	DOC_REV,"
-							+ "	RM_NUM,"
-							+ "	STD_ACC,"
-							+ "	STD_ACC_2,"
-							+ "	STD_ACC_3,"
-							+ "	STD_ACC_4,"
-							+ "	STD_ACC_5,"
-							+ "	STD_ACC_6,"
-							+ "	STD_ACC_DES,"
-							+ "	STD_ACC_DES_2,"
-							+ "	STD_ACC_DES_3,"
-							+ "	STD_ACC_DES_4,"
-							+ "	STD_ACC_DES_5,"
-							+ "	STD_ACC_DES_6,"
-							+ "	TAS_INCL_A,"
-							+ "	TAS_INCL_B,"
-							+ "	TAS_INCL_C,"
-							+ "	TAS_INCL_D,"
-							+ "	TAS_INCL_A_G,"
-							+ "	TAS_INCL_B_G,"
-							+ "	TAS_INCL_C_G,"
-							+ "	TAS_INCL_D_G,"
-							+ "	TAS_INCL_NOTE_1,"
-							+ "	TAS_INCL_NOTE_2,"
-							+ "	TAS_INCL_NOTE_3,"
-							+ "	DOC_RICH,"
-							+ "	TP_AFF_ACC,"
-							+ "	TP_AFF_ACC_2,"
-							+ "	TP_AFF_ACC_3,"
-							+ "	TP_AFF_ACC_4,"
-							+ "	TP_AFF_ACC_5,"
-							+ "	TP_AFF_ACC_6,"
-							+ "	TP_AFF_GR_1,"
-							+ "	RM_NUM_REV,"
-							+ "	RM_OR_N,"
-							+ "	DES_VALORE_PRODOTTO,"
-							+ "	DOC_DESC_REV,"
-							+ "	DOC_DATA_REV,"
-							+ "	TAS_INCL_ACT,"
-							+ "	TAS_INCL_ACT_G,"
-							+ "	TP_AFF_GR,"
-							+ "	FLAG_RMC,"
-							+ "	TIMESTAMP_AGG,"
-							+ "	AL_FLAG_INF,"
-							+ "	ALSOL_FLAG_INF,"
-							+ "	AL_MIN,"
-							+ "	AL_MAX,"
-							+ "	ALSOL_INF,"
-							+ "	ALSOL_MIN,"
-							+ "	ALSOL_MAX,"
-							+ "	AS_FLAG_INF,"
-							+ "	AS_MIN,"
-							+ "	AS_MAX,"
-							+ "	B_FLAG_INF,"
-							+ "	B_MIN,"
-							+ "	B_MAX,"
-							+ "	BI_FLAG_INF,"
-							+ "	BI_MIN,"
-							+ "	BI_MAX,"
-							+ "	C_FLAG_INF,"
-							+ "	C_MIN,"
-							+ "	C_MAX,"
-							+ "	C_N_FLAG_INF,"
-							+ "	C_N_MIN,"
-							+ "	C_N_MAX,"
-							+ "	CA_FLAG_INF,"
-							+ "	CA_MIN,"
-							+ "	CA_MAX,"
-							+ "	CB_FLAG_INF,"
-							+ "	CB_MIN,"
-							+ "	CB_MAX,"
-							+ "	CE_FLAG_INF,"
-							+ "	CE_MIN,"
-							+ "	CE_MAX,"
-							+ "	CO_FLAG_INF,"
-							+ "	CO_MIN,"
-							+ "	CO_MAX,"
-							+ "	CR_FLAG_INF,"
-							+ "	CR_MIN,"
-							+ "	CR_MAX,"
-							+ "	CR_EQ_FLAG_INF,"
-							+ "	CR_EQ_MIN,"
-							+ "	CR_EQ_MAX,"
-							+ "	CU_FLAG_INF,"
-							+ "	CU_MIN,"
-							+ "	CU_MAX,"
-							+ "	FE_FLAG_INF,"
-							+ "	FE_MIN,"
-							+ "	FE_MAX,"
-							+ "	H_FLAG_INF,"
-							+ "	H_MIN,"
-							+ "	H_MAX,"
-							+ "	H_PPM_O_PERC,"
-							+ "	JF_FLAG_INF,"
-							+ "	JF_MIN,"
-							+ "	JF_MAX,"
-							+ "	MN_FLAG_INF,"
-							+ "	MN_MIN,"
-							+ "	MN_MAX,"
-							+ "	MO_FLAG_INF,"
-							+ "	MO_MIN,"
-							+ "	MO_MAX,"
-							+ "	N_FLAG_INF,"
-							+ "	N_MIN,"
-							+ "	N_MAX,"
-							+ "	N_PPM_O_PERC,"
-							+ "	NB_FLAG_INF,"
-							+ "	NB_MIN,"
-							+ "	NB_MAX,"
-							+ "	NB_TA_FLAG_INF,"
-							+ "	NB_TA_MIN,"
-							+ "	NB_TA_MAX,"
-							+ "	NI_FLAG_INF,"
-							+ "	NI_MIN,"
-							+ "	NI_MAX,"
-							+ "	O_FLAG_INF,"
-							+ "	O_MIN,"
-							+ "	O_MAX,"
-							+ "	O_PPM_O_PERC,"
-							+ "	P_FLAG_INF,"
-							+ "	P_MIN,"
-							+ "	P_MAX,"
-							+ "	PB_FLAG_INF,"
-							+ "	PB_MIN,"
-							+ "	PB_MAX,"
-							+ "	PCM_FLAG_INF,"
-							+ "	PCM_MIN,"
-							+ "	PCM_MAX,"
-							+ "	PRE_FLAG_INF,"
-							+ "	PRE_MIN,"
-							+ "	PRE_MAX,"
-							+ "	S_FLAG_INF,"
-							+ "	S_MIN,"
-							+ "	S_MAX,"
-							+ "	SB_FLAG_INF,"
-							+ "	SB_MIN,"
-							+ "	SB_MAX,"
-							+ "	SI_FLAG_INF,"
-							+ "	SI_MIN,"
-							+ "	SI_MAX,"
-							+ "	SN_FLAG_INF,"
-							+ "	SN_MIN,"
-							+ "	SN_MAX,"
-							+ "	TA_FLAG_INF,"
-							+ "	TA_MIN,"
-							+ "	TA_MAX,"
-							+ "	TI_FLAG_INF,"
-							+ "	TI_MIN,"
-							+ "	TI_MAX,"
-							+ "	V_FLAG_INF,"
-							+ "	V_MIN,"
-							+ "	V_MAX,"
-							+ "	W_FLAG_INF,"
-							+ "	W_MIN,"
-							+ "	W_MAX,"
-							+ "	XF_FLAG_INF,"
-							+ "	XF_MIN,"
-							+ "	XF_MAX,"
-							+ "	Y_FLAG_INF,"
-							+ "	Y_MIN,"
-							+ "	Y_MAX,"
-							+ "	ZR_FLAG_INF,"
-							+ "	ZR_MIN,"
-							+ "	ZR_MAX,"
-							+ "	AC_FORMULA_1,"
-							+ "	AC_FORMULA_1_MAX,"
-							+ "	AC_FORMULA_1_MIN,"
-							+ "	AC_FORMULA_2,"
-							+ "	AC_FORMULA_2_MAX,"
-							+ "	AC_FORMULA_2_MIN,"
-							+ "	AC_FORMULA_3,"
-							+ "	AC_FORMULA_3_MAX,"
-							+ "	AC_FORMULA_3_MIN,"
-							+ "	AC_FORMULA_4,"
-							+ "	AC_FORMULA_4_MAX,"
-							+ "	AC_FORMULA_4_MIN,"
-							+ "	AC_FORMULA_5,"
-							+ "	AC_FORMULA_5_MAX,"
-							+ "	AC_FORMULA_5_MIN,"
-							+ "	ELABORATO) ";
+					YPTQcAnalisiRm analisiChimica = (YPTQcAnalisiRm) Factory.createObject(YPTQcAnalisiRm.class);
 
-					stmt = stmt +
-							"VALUES (" +
-							"'" + ALIAS_ACCIAIO + "', " +
-							"'" + ACCIAO + "', " +
-							TP_FUS_ACC + ", " +
-							"'" + DOC_REV_APPR + "', " +
-							"'" + DOC_REV_PREP + "', " +
-							"'" + ID + "', " +
-							"'" + NOTE + "', " +
-							"'" + NOTE_2 + "', " +
-							"'" + NOTE_3 + "', " +
-							FLAG_PR_SPE + ", " +
-							"'" + DOC_REV + "', " +
-							"'" + RM_NUM + "', " +
-							"'" + STD_ACC + "', " +
-							"'" + STD_ACC_2 + "', " +
-							"'" + STD_ACC_3 + "', " +
-							"'" + STD_ACC_4 + "', " +
-							"'" + STD_ACC_5 + "', " +
-							"'" + STD_ACC_6 + "', " +
-							"'" + STD_ACC_DES + "', " +
-							"'" + STD_ACC_DES_2 + "', " +
-							"'" + STD_ACC_DES_3 + "', " +
-							"'" + STD_ACC_DES_4 + "', " +
-							"'" + STD_ACC_DES_5 + "', " +
-							"'" + STD_ACC_DES_6 + "', " +
-							"'" + TAS_INCL_A + "', " +
-							"'" + TAS_INCL_B + "', " +
-							"'" + TAS_INCL_C + "', " +
-							"'" + TAS_INCL_D + "', " +
-							"'" + TAS_INCL_A_G + "', " +
-							"'" + TAS_INCL_B_G + "', " +
-							"'" + TAS_INCL_C_G + "', " +
-							"'" + TAS_INCL_D_G + "', " +
-							"'" + TAS_INCL_NOTE_1 + "', " +
-							"'" + TAS_INCL_NOTE_2 + "', " +
-							"'" + TAS_INCL_NOTE_3 + "', " +
-							DOC_RICH + ", " +
-							TP_AFF_ACC + ", " +
-							TP_AFF_ACC_2 + ", " +
-							TP_AFF_ACC_3 + ", " +
-							TP_AFF_ACC_4 + ", " +
-							TP_AFF_ACC_5 + ", " +
-							TP_AFF_ACC_6 + ", " +
-							TP_AFF_GR_1 + ", " +
-							"'" + RM_NUM_REV + "', " +
-							"'" + RM_OR_N + "', " +
-							"'" + DES_VALORE_PRODOTTO + "', " +
-							"'" + DOC_DESC_REV + "', " +
-							"'" + DOC_DATA_REV + "', " +
-							"'" + TAS_INCL_ACT + "', " +
-							"'" + TAS_INCL_ACT_G + "', " +
-							"'" + TP_AFF_GR + "', " +
-							FLAG_RMC + ", " +
-							"'" + TIMESTAMP_AGG + "', " +
-							AL_FLAG_INF + ", " +
-							ALSOL_FLAG_INF + ", " +
-							AL_MIN + ", " +
-							AL_MAX + ", " +
-							ALSOL_INF + ", " +
-							ALSOL_MIN + ", " +
-							ALSOL_MAX + ", " +
-							AS_FLAG_INF + ", " +
-							AS_MIN + ", " +
-							AS_MAX + ", " +
-							B_FLAG_INF + ", " +
-							B_MIN + ", " +
-							B_MAX + ", " +
-							BI_FLAG_INF + ", " +
-							BI_MIN + ", " +
-							BI_MAX + ", " +
-							C_FLAG_INF + ", " +
-							C_MIN + ", " +
-							C_MAX + ", " +
-							C_N_FLAG_INF + ", " +
-							C_N_MIN + ", " +
-							C_N_MAX + ", " +
-							CA_FLAG_INF + ", " +
-							CA_MIN + ", " +
-							CA_MAX + ", " +
-							CB_FLAG_INF + ", " +
-							CB_MIN + ", " +
-							CB_MAX + ", " +
-							CE_FLAG_INF + ", " +
-							CE_MIN + ", " +
-							CE_MAX + ", " +
-							CO_FLAG_INF + ", " +
-							CO_MIN + ", " +
-							CO_MAX + ", " +
-							CR_FLAG_INF + ", " +
-							CR_MIN + ", " +
-							CR_MAX + ", " +
-							CR_EQ_FLAG_INF + ", " +
-							CR_EQ_MIN + ", " +
-							CR_EQ_MAX + ", " +
-							CU_FLAG_INF + ", " +
-							CU_MIN + ", " +
-							CU_MAX + ", " +
-							FE_FLAG_INF + ", " +
-							FE_MIN + ", " +
-							FE_MAX + ", " +
-							H_FLAG_INF + ", " +
-							H_MIN + ", " +
-							H_MAX + ", " +
-							H_PPM_O_PERC + ", " +
-							JF_FLAG_INF + ", " +
-							JF_MIN + ", " +
-							JF_MAX + ", " +
-							MN_FLAG_INF + ", " +
-							MN_MIN + ", " +
-							MN_MAX + ", " +
-							MO_FLAG_INF + ", " +
-							MO_MIN + ", " +
-							MO_MAX + ", " +
-							N_FLAG_INF + ", " +
-							N_MIN + ", " +
-							N_MAX + ", " +
-							N_PPM_O_PERC + ", " +
-							NB_FLAG_INF + ", " +
-							NB_MIN + ", " +
-							NB_MAX + ", " +
-							NB_TA_FLAG_INF + ", " +
-							NB_TA_MIN + ", " +
-							NB_TA_MAX + ", " +
-							NI_FLAG_INF + ", " +
-							NI_MIN + ", " +
-							NI_MAX + ", " +
-							O_FLAG_INF + ", " +
-							O_MIN + ", " +
-							O_MAX + ", " +
-							O_PPM_O_PERC + ", " +
-							P_FLAG_INF + ", " +
-							P_MIN + ", " +
-							P_MAX + ", " +
-							PB_FLAG_INF + ", " +
-							PB_MIN + ", " +
-							PB_MAX + ", " +
-							PCM_FLAG_INF + ", " +
-							PCM_MIN + ", " +
-							PCM_MAX + ", " +
-							PRE_FLAG_INF + ", " +
-							PRE_MIN + ", " +
-							PRE_MAX + ", " +
-							S_FLAG_INF + ", " +
-							S_MIN + ", " +
-							S_MAX + ", " +
-							SB_FLAG_INF + ", " +
-							SB_MIN + ", " +
-							SB_MAX + ", " +
-							SI_FLAG_INF + ", " +
-							SI_MIN + ", " +
-							SI_MAX + ", " +
-							SN_FLAG_INF + ", " +
-							SN_MIN + ", " +
-							SN_MAX + ", " +
-							TA_FLAG_INF + ", " +
-							TA_MIN + ", " +
-							TA_MAX + ", " +
-							TI_FLAG_INF + ", " +
-							TI_MIN + ", " +
-							TI_MAX + ", " +
-							V_FLAG_INF + ", " +
-							V_MIN + ", " +
-							V_MAX + ", " +
-							W_FLAG_INF + ", " +
-							W_MIN + ", " +
-							W_MAX + ", " +
-							XF_FLAG_INF + ", " +
-							XF_MIN + ", " +
-							XF_MAX + ", " +
-							Y_FLAG_INF + ", " +
-							Y_MIN + ", " +
-							Y_MAX + ", " +
-							ZR_FLAG_INF + ", " +
-							ZR_MIN + ", " +
-							ZR_MAX + ", " +
-							"'" + AC_FORMULA_1 + "', " +
-							AC_FORMULA_1_MAX + ", " +
-							AC_FORMULA_1_MIN + ", " +
-							"'" + AC_FORMULA_2 + "', " +
-							AC_FORMULA_2_MAX + ", " +
-							AC_FORMULA_2_MIN + ", " +
-							"'" + AC_FORMULA_3 + "', " +
-							AC_FORMULA_3_MAX + ", " +
-							AC_FORMULA_3_MIN + ", " +
-							"'" + AC_FORMULA_4 + "', " +
-							AC_FORMULA_4_MAX + ", " +
-							AC_FORMULA_4_MIN + ", " +
-							"'" + AC_FORMULA_5 + "', " +
-							AC_FORMULA_5_MAX + ", " +
-							AC_FORMULA_5_MIN + ", " +
-							"'0'" + 
-							");";
+					analisiChimica.setAlliasAcciaio(ALIAS_ACCIAIO);
+					analisiChimica.setAcciaio(ACCIAO);
+					analisiChimica.setTpFusAcc(TP_FUS_ACC);
+					analisiChimica.setDocRevAppr(DOC_REV_APPR);
+					analisiChimica.setDocRevPrep(DOC_REV_PREP);
+					analisiChimica.setId(ID);
+					analisiChimica.setNote(NOTE);
+					analisiChimica.setNote2(NOTE_2);
+					analisiChimica.setNote3(NOTE_3);
+					analisiChimica.setFlagPrSpe(FLAG_PR_SPE);
+					analisiChimica.setDocRev(DOC_REV);
+					analisiChimica.setRmNum(norma.getNumeroRM());
+					analisiChimica.setStdAcc(STD_ACC);
+					analisiChimica.setStdAcc2(STD_ACC_2);
+					analisiChimica.setStdAcc3(STD_ACC_3);
+					analisiChimica.setStdAcc4(STD_ACC_4);
+					analisiChimica.setStdAcc5(STD_ACC_5);
+					analisiChimica.setStdAcc6(STD_ACC_6);
+					analisiChimica.setStdAccDes(STD_ACC_DES);
+					analisiChimica.setStdAccDes2(STD_ACC_DES_2);
+					analisiChimica.setStdAccDes3(STD_ACC_DES_3);
+					analisiChimica.setStdAccDes4(STD_ACC_DES_4);
+					analisiChimica.setStdAccDes5(STD_ACC_DES_5);
+					analisiChimica.setStdAccDes6(STD_ACC_DES_6);
+					analisiChimica.setTasInclA(TAS_INCL_A);
+					analisiChimica.setTasInclB(TAS_INCL_B);
+					analisiChimica.setTasInclC(TAS_INCL_C);
+					analisiChimica.setTasInclD(TAS_INCL_D);
+					analisiChimica.setTasInclAG(TAS_INCL_A_G);
+					analisiChimica.setTasInclBG(TAS_INCL_B_G);
+					analisiChimica.setTasInclCG(TAS_INCL_C_G);
+					analisiChimica.setTasInclDG(TAS_INCL_D_G);
+					analisiChimica.setTasInclNote1(TAS_INCL_NOTE_1);
+					analisiChimica.setTasInclNote2(TAS_INCL_NOTE_2);
+					analisiChimica.setTasInclNote3(TAS_INCL_NOTE_3);
+					analisiChimica.setDocRich(DOC_RICH);
+					analisiChimica.setTpAffAcc(TP_AFF_ACC);
+					analisiChimica.setTpAffAcc2(TP_AFF_ACC_2);
+					analisiChimica.setTpAffAcc3(TP_AFF_ACC_3);
+					analisiChimica.setTpAffAcc4(TP_AFF_ACC_4);
+					analisiChimica.setTpAffAcc5(TP_AFF_ACC_5);
+					analisiChimica.setTpAffAcc6(TP_AFF_ACC_6);
+					analisiChimica.setTpAffGr1(TP_AFF_GR_1);
+					analisiChimica.setRmNumRev(RM_NUM_REV);
+					analisiChimica.setRmOrN(RM_OR_N);
+					analisiChimica.setDesValoreProdotto(DES_VALORE_PRODOTTO);
+					analisiChimica.setDocDescRev(DOC_DESC_REV);
+					analisiChimica.setDocDataRev(TimeUtils.getDate(DOC_DATA_REV));
+					analisiChimica.setTasInclAct(TAS_INCL_ACT);
+					analisiChimica.setTasInclActG(TAS_INCL_ACT_G);
+					analisiChimica.setTpAffGr(TP_AFF_GR);
+					analisiChimica.setFlagRmc(FLAG_RMC);
+					analisiChimica.setTimestampAgg(TIMESTAMP_AGG);
 
-					list.add(stmt);
+					analisiChimica.setAlFlagInf(AL_FLAG_INF);
+					analisiChimica.setAlsolFlagInf(ALSOL_FLAG_INF);
+					analisiChimica.setAlMin(AL_MIN);
+					analisiChimica.setAlMax(AL_MAX);
+					analisiChimica.setAlsolInf(ALSOL_INF);
+					analisiChimica.setAlsolMin(ALSOL_MIN);
+					analisiChimica.setAlsolMax(ALSOL_MAX);
+					analisiChimica.setAsFlagInf(AS_FLAG_INF);
+					analisiChimica.setAsMin(AS_MIN);
+					analisiChimica.setAsMax(AS_MAX);
+					analisiChimica.setBFlagInf(B_FLAG_INF);
+					analisiChimica.setBMin(B_MIN);
+					analisiChimica.setBMax(B_MAX);
+					analisiChimica.setBiFlagInf(BI_FLAG_INF);
+					analisiChimica.setBiMin(BI_MIN);
+					analisiChimica.setBiMax(BI_MAX);
+					analisiChimica.setCFlagInf(C_FLAG_INF);
+					analisiChimica.setCMin(C_MIN);
+					analisiChimica.setCMax(C_MAX);
+					analisiChimica.setCNFlagInf(C_N_FLAG_INF);
+					analisiChimica.setCNMin(C_N_MIN);
+					analisiChimica.setCNMax(C_N_MAX);
+					analisiChimica.setCaFlagInf(CA_FLAG_INF);
+					analisiChimica.setCaMin(CA_MIN);
+					analisiChimica.setCaMax(CA_MAX);
+					analisiChimica.setCbFlagInf(CB_FLAG_INF);
+					analisiChimica.setCbMin(CB_MIN);
+					analisiChimica.setCbMax(CB_MAX);
+					analisiChimica.setCeFlagInf(CE_FLAG_INF);
+					analisiChimica.setCeMin(CE_MIN);
+					analisiChimica.setCeMax(CE_MAX);
+					analisiChimica.setCoFlagInf(CO_FLAG_INF);
+					analisiChimica.setCoMin(CO_MIN);
+					analisiChimica.setCoMax(CO_MAX);
+					analisiChimica.setCrFlagInf(CR_FLAG_INF);
+					analisiChimica.setCrMin(CR_MIN);
+					analisiChimica.setCrMax(CR_MAX);
+					analisiChimica.setCrEqFlagInf(CR_EQ_FLAG_INF);
+					analisiChimica.setCrEqMin(CR_EQ_MIN);
+					analisiChimica.setCrEqMax(CR_EQ_MAX);
+					analisiChimica.setCuFlagInf(CU_FLAG_INF);
+					analisiChimica.setCuMin(CU_MIN);
+					analisiChimica.setCuMax(CU_MAX);
+					analisiChimica.setFeFlagInf(FE_FLAG_INF);
+					analisiChimica.setFeMin(FE_MIN);
+					analisiChimica.setFeMax(FE_MAX);
+					analisiChimica.setHFlagInf(H_FLAG_INF);
+					analisiChimica.setHMin(H_MIN);
+					analisiChimica.setHMax(H_MAX);
+
+					if (H_PPM_O_PERC != null) {
+						analisiChimica.setHPpmOPerc(H_PPM_O_PERC.intValue());
+					}
+
+					analisiChimica.setJfFlagInf(JF_FLAG_INF);
+					analisiChimica.setJfMin(JF_MIN);
+					analisiChimica.setJfMax(JF_MAX);
+					analisiChimica.setMnFlagInf(MN_FLAG_INF);
+					analisiChimica.setMnMin(MN_MIN);
+					analisiChimica.setMnMax(MN_MAX);
+					analisiChimica.setMoFlagInf(MO_FLAG_INF);
+					analisiChimica.setMoMin(MO_MIN);
+					analisiChimica.setMoMax(MO_MAX);
+					analisiChimica.setNFlagInf(N_FLAG_INF);
+					analisiChimica.setNMin(N_MIN);
+					analisiChimica.setNMax(N_MAX);
+
+					analisiChimica.setNPpmOPerc(N_PPM_O_PERC.intValue());
+
+					analisiChimica.setNbFlagInf(NB_FLAG_INF);
+					analisiChimica.setNbMin(NB_MIN);
+					analisiChimica.setNbMax(NB_MAX);
+					analisiChimica.setNbTaFlagInf(NB_TA_FLAG_INF);
+					analisiChimica.setNbTaMin(NB_TA_MIN);
+					analisiChimica.setNbTaMax(NB_TA_MAX);
+					analisiChimica.setNiFlagInf(NI_FLAG_INF);
+					analisiChimica.setNiMin(NI_MIN);
+					analisiChimica.setNiMax(NI_MAX);
+					analisiChimica.setOFlagInf(O_FLAG_INF);
+					analisiChimica.setOMin(O_MIN);
+					analisiChimica.setOMax(O_MAX);
+
+					analisiChimica.setOPpmOPerc(O_PPM_O_PERC.intValue());
+
+					analisiChimica.setPFlagInf(P_FLAG_INF);
+					analisiChimica.setPMin(P_MIN);
+					analisiChimica.setPMax(P_MAX);
+					analisiChimica.setPbFlagInf(PB_FLAG_INF);
+					analisiChimica.setPbMin(PB_MIN);
+					analisiChimica.setPbMax(PB_MAX);
+					analisiChimica.setPcmFlagInf(PCM_FLAG_INF);
+					analisiChimica.setPcmMin(PCM_MIN);
+					analisiChimica.setPcmMax(PCM_MAX);
+					analisiChimica.setPreFlagInf(PRE_FLAG_INF);
+					analisiChimica.setPreMin(PRE_MIN);
+					analisiChimica.setPreMax(PRE_MAX);
+					analisiChimica.setSFlagInf(S_FLAG_INF);
+					analisiChimica.setSMin(S_MIN);
+					analisiChimica.setSMax(S_MAX);
+					analisiChimica.setSbFlagInf(SB_FLAG_INF);
+					analisiChimica.setSbMin(SB_MIN);
+					analisiChimica.setSbMax(SB_MAX);
+					analisiChimica.setSiFlagInf(SI_FLAG_INF);
+					analisiChimica.setSiMin(SI_MIN);
+					analisiChimica.setSiMax(SI_MAX);
+					analisiChimica.setSnFlagInf(SN_FLAG_INF);
+					analisiChimica.setSnMin(SN_MIN);
+					analisiChimica.setSnMax(SN_MAX);
+					analisiChimica.setTaFlagInf(TA_FLAG_INF);
+					analisiChimica.setTaMin(TA_MIN);
+					analisiChimica.setTaMax(TA_MAX);
+					analisiChimica.setTiFlagInf(TI_FLAG_INF);
+					analisiChimica.setTiMin(TI_MIN);
+					analisiChimica.setTiMax(TI_MAX);
+					analisiChimica.setVFlagInf(V_FLAG_INF);
+					analisiChimica.setVMin(V_MIN);
+					analisiChimica.setVMax(V_MAX);
+					analisiChimica.setWFlagInf(W_FLAG_INF);
+					analisiChimica.setWMin(W_MIN);
+					analisiChimica.setWMax(W_MAX);
+					analisiChimica.setXfFlagInf(XF_FLAG_INF);
+					analisiChimica.setXfMin(XF_MIN);
+					analisiChimica.setXfMax(XF_MAX);
+					analisiChimica.setYFlagInf(Y_FLAG_INF);
+					analisiChimica.setYMin(Y_MIN);
+					analisiChimica.setYMax(Y_MAX);
+					analisiChimica.setZrFlagInf(ZR_FLAG_INF);
+					analisiChimica.setZrMin(ZR_MIN);
+					analisiChimica.setZrMax(ZR_MAX);
+					analisiChimica.setAcFormula1(AC_FORMULA_1);
+					analisiChimica.setAcFormula1Max(AC_FORMULA_1_MAX);
+					analisiChimica.setAcFormula1Min(AC_FORMULA_1_MIN);
+					analisiChimica.setAcFormula2(AC_FORMULA_2);
+					analisiChimica.setAcFormula2Max(AC_FORMULA_2_MAX);
+					analisiChimica.setAcFormula2Min(AC_FORMULA_2_MIN);
+					analisiChimica.setAcFormula3(AC_FORMULA_3);
+					analisiChimica.setAcFormula3Max(AC_FORMULA_3_MAX);
+					analisiChimica.setAcFormula3Min(AC_FORMULA_3_MIN);
+					analisiChimica.setAcFormula4(AC_FORMULA_4);
+					analisiChimica.setAcFormula4Max(AC_FORMULA_4_MAX);
+					analisiChimica.setAcFormula4Min(AC_FORMULA_4_MIN);
+					analisiChimica.setAcFormula5(AC_FORMULA_5);
+					analisiChimica.setAcFormula5Max(AC_FORMULA_5_MAX);
+					analisiChimica.setAcFormula5Min(AC_FORMULA_5_MIN);
+
+					analisiChimica.setTimestampAgg(norma.getDatiComuni().getTimestampAgg());
+
+					analisiChimica.setElaborato("0");
+
+					list.add(analisiChimica);
+
 
 				}catch (Exception e) {
 					output.println(" Norma : {"+norma.getKey()+"} exc : "+e.getMessage());
@@ -1094,8 +1341,8 @@ public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 	}
 
 	@SuppressWarnings("rawtypes")
-	protected List<String> estrazioneAnalisiAcciaieria(Timestamp timestamp) {
-		List<String> list = new ArrayList<String>();
+	protected List<YPTQcAnalisiAcciaieria> estrazioneAnalisiAcciaieria(Timestamp timestamp) {
+		List<YPTQcAnalisiAcciaieria> list = new ArrayList<YPTQcAnalisiAcciaieria>();
 		List<DocumentoCollaudoTestata> collaudi = recuperaDocumentiCollaudoDaEsportare(timestamp);
 		if(collaudi != null) {
 
@@ -1351,81 +1598,79 @@ public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 										}
 									}
 								}
-								String stmt = "INSERT INTO PantheraTarget.dbo.YPT_QC_ANALISI_ACCIAIERIA ("
-										+ "ENTRATA, [DATA], COLATA, ACCIAIERIA, ID, ACCIAIO, ALLIAS_ACCIAIO, "
-										+ "SPECIFICA_1, ELAB_ACCIAIO, TIPO_TRAT, NOTE, TIMESTAMP_AGG, "
-										+ "AL, ALSOI, AS_, B, BI, C, CA, CB, CE, CO, CR, CR_EQ, CU, H, H_PPM_O_PERC, "
-										+ "JF, MN, MO, N, N_PPM_O_PERC, NB, NI, O, O_PPM_O_PERC, P, PB, PCM, PRE, "
-										+ "S, SB, SI, SN, TA, TI, V, W, XF, ZR, C_N, FE, NB_TA, Y, "
-										+ "AC_FORMULA_1, AC_FORMULA_1_VALORE, AC_FORMULA_2, AC_FORMULA_2_VALORE, "
-										+ "AC_FORMULA_3, AC_FORMULA_3_VALORE, AC_FORMULA_4, AC_FORMULA_4_VALORE, "
-										+ "AC_FORMULA_5, AC_FORMULA_5_VALORE, ELABORATO) VALUES ("
-										+ "'" + ENTRATA + "', "
-										+ "'" + DATA + "', "
-										+ "'" + COLATA + "', "
-										+ "'" + ACCIAIERIA + "', "
-										+ "'" + ID + "', "
-										+ "'" + ACCIAIO + "', "
-										+ "'" + ALLIAS_ACCIAIO + "', "
-										+ "'" + SPECIFICA_1 + "', "
-										+ "'" + ELAB_ACCIAIO + "', "
-										+ "'" + TIPO_TRAT + "', "
-										+ "'" + NOTE + "', "
-										+ "'" + TIMESTAMP_AGG + "', "
-										+ AL + ", "
-										+ ALSOI + ", "
-										+ AS_ + ", "
-										+ B + ", "
-										+ BI + ", "
-										+ C + ", "
-										+ CA + ", "
-										+ CB + ", "
-										+ CE + ", "
-										+ CO + ", "
-										+ CR + ", "
-										+ CR_EQ + ", "
-										+ CU + ", "
-										+ H + ", "
-										+ H_PPM_O_PERC + ", "
-										+ JF + ", "
-										+ MN + ", "
-										+ MO + ", "
-										+ N + ", "
-										+ N_PPM_O_PERC + ", "
-										+ NB + ", "
-										+ NI + ", "
-										+ O + ", "
-										+ O_PPM_O_PERC + ", "
-										+ P + ", "
-										+ PB + ", "
-										+ PCM + ", "
-										+ PRE + ", "
-										+ S + ", "
-										+ SB + ", "
-										+ SI + ", "
-										+ SN + ", "
-										+ TA + ", "
-										+ TI + ", "
-										+ V + ", "
-										+ W + ", "
-										+ XF + ", "
-										+ ZR + ", "
-										+ C_N + ", "
-										+ FE + ", "
-										+ NB_TA + ", "
-										+ Y + ", "
-										+ "'" + AC_FORMULA_1 + "', "
-										+ AC_FORMULA_1_VALORE + ", "
-										+ "'" + AC_FORMULA_2 + "', "
-										+ AC_FORMULA_2_VALORE + ", "
-										+ "'" + AC_FORMULA_3 + "', "
-										+ AC_FORMULA_3_VALORE + ", "
-										+ "'" + AC_FORMULA_4 + "', "
-										+ AC_FORMULA_4_VALORE + ", "
-										+ "'" + AC_FORMULA_5 + "', "
-										+ AC_FORMULA_5_VALORE + ", "
-										+ "'0');";
-								list.add(stmt);
+
+								YPTQcAnalisiAcciaieria analisi = (YPTQcAnalisiAcciaieria) Factory.createObject(YPTQcAnalisiAcciaieria.class);
+
+								analisi.setEntrata(ENTRATA);
+								analisi.setData(DATA);
+								analisi.setColata(COLATA);
+								analisi.setAcciaieria(ACCIAIERIA);
+								analisi.setId(ID);
+								analisi.setAcciaio(ACCIAIO);
+								analisi.setAlliasAcciaio(ALLIAS_ACCIAIO);
+								analisi.setSpecifica1(SPECIFICA_1);
+								analisi.setElabAcciaio(ELAB_ACCIAIO);
+								analisi.setTipoTrat(TIPO_TRAT);
+								analisi.setNote(NOTE);
+								analisi.setTimestampAgg(TIMESTAMP_AGG);
+
+								analisi.setAl(AL);
+								analisi.setAlsol(ALSOI);
+								analisi.setAs_(AS_);
+								analisi.setB_(B);
+								analisi.setBi(BI);
+								analisi.setC_(C);
+								analisi.setCa(CA);
+								analisi.setCb(CB);
+								analisi.setCe(CE);
+								analisi.setCo(CO);
+								analisi.setCr(CR);
+								analisi.setCrEq(CR_EQ);
+								analisi.setCu(CU);
+								analisi.setH_(H);
+								analisi.sethPpmOPerc(H_PPM_O_PERC);
+								analisi.setJf(JF);
+								analisi.setMn(MN);
+								analisi.setMo(MO);
+								analisi.setN_(N);
+								analisi.setnPpmOPerc(N_PPM_O_PERC);
+								analisi.setNb(NB);
+								analisi.setNi(NI);
+								analisi.setO_(O);
+								analisi.setoPpmOPerc(O_PPM_O_PERC);
+								analisi.setP_(P);
+								analisi.setPb(PB);
+								analisi.setPcm(PCM);
+								analisi.setPre(PRE);
+								analisi.setS_(S);
+								analisi.setSb(SB);
+								analisi.setSi(SI);
+								analisi.setSn(SN);
+								analisi.setTa(TA);
+								analisi.setTi(TI);
+								analisi.setV_(V);
+								analisi.setW_(W);
+								analisi.setXf(XF);
+								analisi.setZr(ZR);
+								analisi.setcN(C_N);
+								analisi.setFe(FE);
+								analisi.setNbTa(NB_TA);
+								analisi.setY_(Y);
+
+								analisi.setAcFormula1(AC_FORMULA_1);
+								analisi.setAcFormula1Valore(AC_FORMULA_1_VALORE);
+								analisi.setAcFormula2(AC_FORMULA_2);
+								analisi.setAcFormula2Valore(AC_FORMULA_2_VALORE);
+								analisi.setAcFormula3(AC_FORMULA_3);
+								analisi.setAcFormula3Valore(AC_FORMULA_3_VALORE);
+								analisi.setAcFormula4(AC_FORMULA_4);
+								analisi.setAcFormula4Valore(AC_FORMULA_4_VALORE);
+								analisi.setAcFormula5(AC_FORMULA_5);
+								analisi.setAcFormula5Valore(AC_FORMULA_5_VALORE);
+
+								analisi.setElaborato("0");
+
+								list.add(analisi);
 							}
 						}
 					}else {
@@ -1452,7 +1697,7 @@ public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 		List<String> keys = new ArrayList<String>();
 		try {
 			ResultSet rs = null;
-			ps = cEstrazioneDocCollNorme.getStatement();
+			ps = ConnectionManager.getCurrentConnection().prepareStatement(cEstrazioneDocCollNorme.getStmtString());
 			Database db = ConnectionManager.getCurrentDatabase();
 			db.setString(ps, 1, Azienda.getAziendaCorrente());
 			db.setString(ps, 2, getFormattedTimestampForQuery(timestamp));
@@ -1571,8 +1816,9 @@ public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 	protected Vector<YNormeQualita> norme(Timestamp timestampElaborazione) {
 
 		try {
-			return (YNormeQualita.retrieveList(YNormeQualita.class, " "+YNormeQualitaTM.ID_AZIENDA+" = '"+Azienda.getAziendaCorrente()+"'"
-					+ " AND "+YNormeQualitaTM.TIMESTAMP_AGG+" > '"+getFormattedTimestampForQuery(timestampElaborazione)+"' ", "", false));
+			String where = " "+YNormeQualitaTM.ID_AZIENDA+" = '"+Azienda.getAziendaCorrente()+"'"
+					+ " AND "+YNormeQualitaTM.TIMESTAMP_AGG+" > '"+getFormattedTimestampForQuery(timestampElaborazione)+"' ";
+			return (YNormeQualita.retrieveList(YNormeQualita.class,where, "", false));
 		} catch (ClassNotFoundException | InstantiationException | IllegalAccessException | SQLException e) {
 			e.printStackTrace(Trace.excStream);
 		}
@@ -1584,27 +1830,48 @@ public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 		return sdf.format(timestamp);
 	}
 
-
-	protected void passo2(ConnectionDescriptor cnd) {
+	public List<YOrdineAcquistoRigaPrm> getRigheAcquistoPerEsportazioneOrdFor(Timestamp timestamp){
+		List<YOrdineAcquistoRigaPrm> lista = new ArrayList<YOrdineAcquistoRigaPrm>();
+		PreparedStatement ps = null;
+		List<String> keys = new ArrayList<String>();
 		try {
-			String stmt = "UPDATE "
-					+ " PantheraTarget.dbo.YPT_QC_ANALISI_RM "
-					+ "SET "
-					+ " ELABORATO = '0' "
-					+ "WHERE "
-					+ " ELABORATO is null";
-			int rc = YDtsxPtExpOrdEsecRunner.eseguiUpdateSuDbExt(stmt,cnd);
-			if(rc > 0)
-				cnd.commit();
-			else
-				cnd.rollback();
-			output.println(" Dtsx-block : YPT_QC_ANALISI_RM Set Elaborato to 0 if Null "+(rc > 0 ? "esito 1" : "esito 0"));
-		}catch (Exception e) {
-			e.printStackTrace(Trace.excStream);
+			ResultSet rs = null;
+			ps = ConnectionManager.getCurrentConnection().prepareStatement(SQL_EXTRACT_ORD_FOR);
+			Database db = ConnectionManager.getCurrentDatabase();
+			db.setString(ps, 1, Azienda.getAziendaCorrente());
+			db.setString(ps, 2, getFormattedTimestampForQuery(timestamp));
+			rs = ps.executeQuery();
+			while(rs.next()) {
+				keys.add(KeyHelper.buildObjectKey(new String[] {
+						rs.getString(YOrdineAcquistoRigaPrmTM.ID_AZIENDA),
+						rs.getString(YOrdineAcquistoRigaPrmTM.ID_ANNO_ORD),
+						rs.getString(YOrdineAcquistoRigaPrmTM.ID_NUMERO_ORD),
+						rs.getString(YOrdineAcquistoRigaPrmTM.ID_RIGA_ORD),
+				}));
+			}
+		}catch (SQLException ex) {
+			ex.printStackTrace(Trace.excStream);
+		}finally {
+			try {
+				if(ps != null) {
+					ps.close();
+				}
+			}catch (SQLException e) {
+				e.printStackTrace(Trace.excStream);
+			}
 		}
+		for(String key : keys) {
+			try {
+				lista.add((YOrdineAcquistoRigaPrm) YOrdineAcquistoRigaPrm.elementWithKey(YOrdineAcquistoRigaPrm.class, key, PersistentObject.NO_LOCK));
+			} catch (SQLException e) {
+				e.printStackTrace(Trace.excStream);
+			}
+		}
+		return lista;
+
 	}
 
-	protected void passo3(ConnectionDescriptor cnd) {
+	protected void riattiva_QC_ANALISI_RM(ConnectionDescriptor cnd) {
 		try {
 			String stmt = "UPDATE [PantheraTarget].[dbo].[YPT_QC_ANALISI_RM] "
 					+ "SET ELABORATO = '0'   "
@@ -1615,13 +1882,13 @@ public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 				cnd.commit();
 			else
 				cnd.rollback();
-			output.println(" Dtsx-block : Riattiva QC_ANALISI_RM "+(rc > 0 ? "esito 1" : "esito 0"));
+			output.println("  Dtsx-block : riattiva_QC_ANALISI_RM "+(rc > 0 ? "esito 1" : "esito 0"));
 		}catch (Exception e) {
 			e.printStackTrace(Trace.excStream);
 		}
 	}
 
-	protected void passo4(ConnectionDescriptor cnd) {
+	protected void riattiva_QC_ANALISI_RM_2(ConnectionDescriptor cnd) {
 		try {
 			String stmt = "UPDATE "
 					+ "	[PantheraTarget].[dbo].[YPT_QC_ANALISI_RM] "
@@ -1651,13 +1918,13 @@ public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 				cnd.commit();
 			else
 				cnd.rollback();
-			output.println(" Dtsx-block : Riattiva QC_ANALISI_RM 2 "+(rc > 0 ? "esito 1" : "esito 0"));
+			output.println("  Dtsx-block : riattiva_QC_ANALISI_RM_2 "+(rc > 0 ? "esito 1" : "esito 0"));
 		}catch (Exception e) {
 			e.printStackTrace(Trace.excStream);
 		}
 	}
 
-	protected void passo5(ConnectionDescriptor cnd) {
+	protected void YPT_QC_ANALISI_RM_set_Elaborato_To_X(ConnectionDescriptor cnd) {
 		try {
 			String stmt = "UPDATE "
 					+ "	PantheraTarget.dbo.YPT_QC_ANALISI_RM "
@@ -1687,78 +1954,13 @@ public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 				cnd.commit();
 			else
 				cnd.rollback();
-			output.println(" Dtsx-block : YPT_QC_ANALISI_RM Set Elaborato to X "+(rc > 0 ? "esito 1" : "esito 0"));
+			output.println("  Dtsx-block : YPT_QC_ANALISI_RM_set_Elaborato_To_X "+(rc > 0 ? "esito 1" : "esito 0"));
 		}catch (Exception e) {
 			e.printStackTrace(Trace.excStream);
 		}
 	}
 
-	protected void passo6(ConnectionDescriptor cnd) {
-		try {
-			String stmt = "INSERT INTO [PantheraTarget].[dbo].[YPT_ORD_FOR] ( "
-					+ "    NUM_DOC, "
-					+ "    ANNO_DOC, "
-					+ "    COD_CF, "
-					+ "    DATA_DOC, "
-					+ "    COD_ART, "
-					+ "    DES_RIGA, "
-					+ "    NUM_RIGA, "
-					+ "    UM_BASE, "
-					+ "    QUANT_UM_BASE, "
-					+ "    PREZZO, "
-					+ "    NOTE_INT, "
-					+ "    DATA_CONS_RIGA, "
-					+ "    ID, "
-					+ "    TIMESTAMP_AGG "
-					+ ") "
-					+ "SELECT  "
-					+ "    NUM_DOC, "
-					+ "    ANNO_DOC, "
-					+ "    COD_CF, "
-					+ "    DATA_DOC, "
-					+ "    COD_ART, "
-					+ "    DES_RIGA, "
-					+ "    NUM_RIGA, "
-					+ "    UM_BASE, "
-					+ "    QUANT_UM_BASE, "
-					+ "    PREZZO, "
-					+ "    NOTE_INT, "
-					+ "    DATA_CONS_RIGA, "
-					+ "    ID, "
-					+ "    TIMESTAMP_AGG "
-					+ "FROM MAME.VW_ORD_FOR; "
-					+ "";
-			int rc = YDtsxPtExpOrdEsecRunner.eseguiUpdateSuDbExt(stmt,cnd);
-			if(rc > 0)
-				cnd.commit();
-			else
-				cnd.rollback();
-			output.println(" Dtsx-block : INSERT INTO [PantheraTarget].[dbo].[YPT_ORD_FOR] "+(rc > 0 ? "esito 1" : "esito 0"));
-		}catch (Exception e) {
-			e.printStackTrace(Trace.excStream);
-		}
-	}
-
-	protected void passo8(ConnectionDescriptor cnd) {
-		try {
-			String stmt = "UPDATE "
-					+ " PantheraTarget.dbo.YPT_ORD_FOR "
-					+ "SET "
-					+ " ELABORATO = '0' "
-					+ "WHERE "
-					+ " ELABORATO is null";
-			int rc = YDtsxPtExpOrdEsecRunner.eseguiUpdateSuDbExt(stmt,cnd);
-			if(rc > 0)
-				cnd.commit();
-			else
-				cnd.rollback();
-			output.println(" Dtsx-block : YPT_ORD_FOR Set Elaborato to 0 if Null "+(rc > 0 ? "esito 1" : "esito 0"));
-		}catch (Exception e) {
-			e.printStackTrace(Trace.excStream);
-		}
-	}
-
-	protected void passo9(ConnectionDescriptor cnd) {
+	protected void riattiva_ORD_FOR(ConnectionDescriptor cnd) {
 		try {
 			String stmt = "UPDATE [PantheraTarget].[dbo].[YPT_ORD_FOR] "
 					+ "SET ELABORATO = '0' "
@@ -1769,13 +1971,13 @@ public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 				cnd.commit();
 			else
 				cnd.rollback();
-			output.println(" Dtsx-block : Riattiva ORD_FOR "+(rc > 0 ? "esito 1" : "esito 0"));
+			output.println("  Dtsx-block : riattiva_ORD_FOR "+(rc > 0 ? "esito 1" : "esito 0"));
 		}catch (Exception e) {
 			e.printStackTrace(Trace.excStream);
 		}
 	}
 
-	protected void passo10(ConnectionDescriptor cnd) {
+	protected void riattiva_ORD_FOR_1(ConnectionDescriptor cnd) {
 		try {
 			String stmt = "UPDATE "
 					+ "	[PantheraTarget].[dbo].[YPT_ORD_FOR] "
@@ -1803,13 +2005,13 @@ public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 				cnd.commit();
 			else
 				cnd.rollback();
-			output.println(" Dtsx-block : Riattiva ORD_FOR 1 "+(rc > 0 ? "esito 1" : "esito 0"));
+			output.println("  Dtsx-block : riattiva_ORD_FOR_1 "+(rc > 0 ? "esito 1" : "esito 0"));
 		}catch (Exception e) {
 			e.printStackTrace(Trace.excStream);
 		}
 	}
 
-	protected void passo11(ConnectionDescriptor cnd) {
+	protected void YPT_ORD_FOR_set_Elaborato_To_X(ConnectionDescriptor cnd) {
 		try {
 			String stmt = "UPDATE "
 					+ "	PantheraTarget.dbo.YPT_ORD_FOR "
@@ -1851,92 +2053,13 @@ public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 				cnd.commit();
 			else
 				cnd.rollback();
-			output.println(" Dtsx-block : YPT_QC_ANALISI_RM "+(rc > 0 ? "esito 1" : "esito 0"));
+			output.println("  Dtsx-block : YPT_ORD_FOR_set_Elaborato_To_X "+(rc > 0 ? "esito 1" : "esito 0"));
 		}catch (Exception e) {
 			e.printStackTrace(Trace.excStream);
 		}
 	}
 
-	protected void passo12(ConnectionDescriptor cnd) {
-		try {
-			String stmt = "INSERT INTO [PantheraTarget].[dbo].[YPT_DDT_FOR] ( "
-					+ "    NUM_DDT_INT, "
-					+ "    ANNO_DOC, "
-					+ "    COD_CF, "
-					+ "    DATA_DOC, "
-					+ "    CODICE_CAUSALE, "
-					+ "    COD_DEP, "
-					+ "    COD_DEP_2, "
-					+ "    COD_ART, "
-					+ "    DES_RIGA, "
-					+ "    NUM_RIGA, "
-					+ "    UM_ACQ, "
-					+ "    QTA_CONSEGNATA, "
-					+ "    PREZZO, "
-					+ "    LOTTO, "
-					+ "    NUM_DDT_FORNITORE, "
-					+ "    DATA_DOC_FORNITORE, "
-					+ "    LINGOTTO, "
-					+ "    RIFERIMENTO_ANNO_ORD_FOR, "
-					+ "    RIFERIMENTO_NUM_ORD_FOR, "
-					+ "    RIFERIMENTO_RIGA_ORD_FOR, "
-					+ "    TIMESTAMP_AGG "
-					+ ") "
-					+ "SELECT  "
-					+ "    NUM_DDT_INT, "
-					+ "    ANNO_DOC, "
-					+ "    COD_CF, "
-					+ "    DATA_DOC, "
-					+ "    CODICE_CAUSALE, "
-					+ "    COD_DEP, "
-					+ "    COD_DEP_2, "
-					+ "    COD_ART, "
-					+ "    DES_RIGA, "
-					+ "    NUM_RIGA, "
-					+ "    UM_ACQ, "
-					+ "    QTA_CONSEGNATA, "
-					+ "    PREZZO, "
-					+ "    LOTTO, "
-					+ "    NUM_DDT_FORNITORE, "
-					+ "    DATA_DOC_FORNITORE, "
-					+ "    LINGOTTO, "
-					+ "    RIFERIMENTO_ANNO_ORD_FOR, "
-					+ "    RIFERIMENTO_NUM_ORD_FOR, "
-					+ "    RIFERIMENTO_RIGA_ORD_FOR, "
-					+ "    TIMESTAMP_AGG "
-					+ "FROM MAME.VW_DDT_FOR; "
-					+ "";
-			int rc = YDtsxPtExpOrdEsecRunner.eseguiUpdateSuDbExt(stmt,cnd);
-			if(rc > 0)
-				cnd.commit();
-			else
-				cnd.rollback();
-			output.println(" Dtsx-block : YPT_QC_ANALISI_RM "+(rc > 0 ? "esito 1" : "esito 0"));
-		}catch (Exception e) {
-			e.printStackTrace(Trace.excStream);
-		}
-	}
-
-	protected void passo13(ConnectionDescriptor cnd) {
-		try {
-			String stmt = "UPDATE "
-					+ " PantheraTarget.dbo.YPT_DDT_FOR "
-					+ "SET "
-					+ " ELABORATO = '0' "
-					+ "WHERE "
-					+ " ELABORATO is null";
-			int rc = YDtsxPtExpOrdEsecRunner.eseguiUpdateSuDbExt(stmt,cnd);
-			if(rc > 0)
-				cnd.commit();
-			else
-				cnd.rollback();
-			output.println(" Dtsx-block : YPT_DDT_FOR Set Elaborato to 0 if Null "+(rc > 0 ? "esito 1" : "esito 0"));
-		}catch (Exception e) {
-			e.printStackTrace(Trace.excStream);
-		}
-	}
-
-	protected void passo1(ConnectionDescriptor cnd) {
+	protected void riattiva_DDT_FOR(ConnectionDescriptor cnd) {
 		try {
 			String stmt = "UPDATE [PantheraTarget].[dbo].[YPT_DDT_FOR] "
 					+ "SET ELABORATO = '0' "
@@ -1947,13 +2070,13 @@ public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 				cnd.commit();
 			else
 				cnd.rollback();
-			output.println(" Dtsx-block : YPT_QC_ANALISI_RM "+(rc > 0 ? "esito 1" : "esito 0"));
+			output.println("  Dtsx-block : riattiva_DDT_FOR "+(rc > 0 ? "esito 1" : "esito 0"));
 		}catch (Exception e) {
 			e.printStackTrace(Trace.excStream);
 		}
 	}
 
-	protected void passo14(ConnectionDescriptor cnd) {
+	protected void riattiva_DDT_FOR_1(ConnectionDescriptor cnd) {
 		try {
 			String stmt = "UPDATE "
 					+ "	[PantheraTarget].[dbo].[YPT_DDT_FOR] "
@@ -1973,13 +2096,13 @@ public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 				cnd.commit();
 			else
 				cnd.rollback();
-			output.println(" Dtsx-block : Riattiva DDT_FOR 1 "+(rc > 0 ? "esito 1" : "esito 0"));
+			output.println("  Dtsx-block : riattiva_DDT_FOR_1 "+(rc > 0 ? "esito 1" : "esito 0"));
 		}catch (Exception e) {
 			e.printStackTrace(Trace.excStream);
 		}
 	}
 
-	protected void passo15(ConnectionDescriptor cnd) {
+	protected void YPT_DDT_FOR_set_Elaborato_To_X(ConnectionDescriptor cnd) {
 		try {
 			String stmt = "UPDATE "
 					+ "	PantheraTarget.dbo.YPT_DDT_FOR "
@@ -2021,178 +2144,13 @@ public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 				cnd.commit();
 			else
 				cnd.rollback();
-			output.println(" Dtsx-block : YPT_DDT_FOR Set Elaborato to X "+(rc > 0 ? "esito 1" : "esito 0"));
+			output.println("  Dtsx-block : YPT_DDT_FOR_set_Elaborato_To_X "+(rc > 0 ? "esito 1" : "esito 0"));
 		}catch (Exception e) {
 			e.printStackTrace(Trace.excStream);
 		}
 	}
 
-	protected void passo16(ConnectionDescriptor cnd) {
-		try {
-			String stmt = "INSERT INTO [PantheraTarget].[dbo].[YPT_QC_ANALISI_ACCIAIERIA] ( "
-					+ "    ENTRATA, "
-					+ "    \"DATA\", "
-					+ "    COLATA, "
-					+ "    ACCIAIERIA, "
-					+ "    ID, "
-					+ "    ACCIAIO, "
-					+ "    ALLIAS_ACCIAIO, "
-					+ "    SPECIFICA_1, "
-					+ "    ELAB_ACCIAIO, "
-					+ "    TIPO_TRAT, "
-					+ "    NOTE, "
-					+ "    TIMESTAMP_AGG, "
-					+ "    AL, "
-					+ "    ALSOL, "
-					+ "    AS_, "
-					+ "    B, "
-					+ "    BI, "
-					+ "    C, "
-					+ "    CA, "
-					+ "    CB, "
-					+ "    CE, "
-					+ "    CO, "
-					+ "    CR, "
-					+ "    CR_EQ, "
-					+ "    CU, "
-					+ "    H, "
-					+ "    H_PPM_O_PERC, "
-					+ "    JF, "
-					+ "    MN, "
-					+ "    MO, "
-					+ "    N, "
-					+ "    N_PPM_O_PERC, "
-					+ "    NB, "
-					+ "    NI, "
-					+ "    O, "
-					+ "    O_PPM_O_PERC, "
-					+ "    P, "
-					+ "    PB, "
-					+ "    PCM, "
-					+ "    PRE, "
-					+ "    S, "
-					+ "    SB, "
-					+ "    SI, "
-					+ "    SN, "
-					+ "    TA, "
-					+ "    TI, "
-					+ "    V, "
-					+ "    W, "
-					+ "    XF, "
-					+ "    ZR, "
-					+ "    C_N, "
-					+ "    FE, "
-					+ "    NB_TA, "
-					+ "    Y, "
-					+ "    AC_FORMULA_1, "
-					+ "    AC_FORMULA_1_VALORE, "
-					+ "    AC_FORMULA_2, "
-					+ "    AC_FORMULA_2_VALORE, "
-					+ "    AC_FORMULA_3, "
-					+ "    AC_FORMULA_3_VALORE, "
-					+ "    AC_FORMULA_4, "
-					+ "    AC_FORMULA_4_VALORE, "
-					+ "    AC_FORMULA_5, "
-					+ "    AC_FORMULA_5_VALORE "
-					+ ") "
-					+ "SELECT  "
-					+ "    ENTRATA, "
-					+ "    \"DATA\", "
-					+ "    COLATA, "
-					+ "    ACCIAIERIA, "
-					+ "    ID, "
-					+ "    ACCIAIO, "
-					+ "    ALLIAS_ACCIAIO, "
-					+ "    SPECIFICA_1, "
-					+ "    ELAB_ACCIAIO, "
-					+ "    TIPO_TRAT, "
-					+ "    NOTE, "
-					+ "    TIMESTAMP_AGG, "
-					+ "    AL, "
-					+ "    ALSOL, "
-					+ "    AS_, "
-					+ "    B, "
-					+ "    BI, "
-					+ "    C, "
-					+ "    CA, "
-					+ "    CB, "
-					+ "    CE, "
-					+ "    CO, "
-					+ "    CR, "
-					+ "    CR_EQ, "
-					+ "    CU, "
-					+ "    H, "
-					+ "    H_PPM_O_PERC, "
-					+ "    JF, "
-					+ "    MN, "
-					+ "    MO, "
-					+ "    N, "
-					+ "    N_PPM_O_PERC, "
-					+ "    NB, "
-					+ "    NI, "
-					+ "    O, "
-					+ "    O_PPM_O_PERC, "
-					+ "    P, "
-					+ "    PB, "
-					+ "    PCM, "
-					+ "    PRE, "
-					+ "    S, "
-					+ "    SB, "
-					+ "    SI, "
-					+ "    SN, "
-					+ "    TA, "
-					+ "    TI, "
-					+ "    V, "
-					+ "    W, "
-					+ "    XF, "
-					+ "    ZR, "
-					+ "    C_N, "
-					+ "    FE, "
-					+ "    NB_TA, "
-					+ "    Y, "
-					+ "    AC_FORMULA_1, "
-					+ "    AC_FORMULA_1_VALORE, "
-					+ "    AC_FORMULA_2, "
-					+ "    AC_FORMULA_2_VALORE, "
-					+ "    AC_FORMULA_3, "
-					+ "    AC_FORMULA_3_VALORE, "
-					+ "    AC_FORMULA_4, "
-					+ "    AC_FORMULA_4_VALORE, "
-					+ "    AC_FORMULA_5, "
-					+ "    AC_FORMULA_5_VALORE "
-					+ "FROM MAME.WV_QC_ANALISI_ACCIAIERIA; "
-					+ "";
-			int rc = YDtsxPtExpOrdEsecRunner.eseguiUpdateSuDbExt(stmt,cnd);
-			if(rc > 0)
-				cnd.commit();
-			else
-				cnd.rollback();
-			output.println(" Dtsx-block : INSERT INTO [PantheraTarget].[dbo].[YPT_QC_ANALISI_ACCIAIERIA] "+(rc > 0 ? "esito 1" : "esito 0"));
-		}catch (Exception e) {
-			e.printStackTrace(Trace.excStream);
-		}
-	}
-
-	protected void passo18(ConnectionDescriptor cnd) {
-		try {
-			String stmt = "UPDATE "
-					+ " PantheraTarget.dbo.YPT_QC_ANALISI_ACCIAIERIA "
-					+ "SET "
-					+ " ELABORATO = '0' "
-					+ "WHERE "
-					+ " ELABORATO is null";
-			int rc = YDtsxPtExpOrdEsecRunner.eseguiUpdateSuDbExt(stmt,cnd);
-			if(rc > 0)
-				cnd.commit();
-			else
-				cnd.rollback();
-			output.println(" Dtsx-block : YPT_QC_ANALISI_ACCIAIERIA  Set Elaborato to 0 if Null "+(rc > 0 ? "esito 1" : "esito 0"));
-		}catch (Exception e) {
-			e.printStackTrace(Trace.excStream);
-		}
-	}
-
-	protected void passo19(ConnectionDescriptor cnd) {
+	protected void riattiva_QC_ANALISI_ACCIAIERIA(ConnectionDescriptor cnd) {
 		try {
 			String stmt = "UPDATE [PantheraTarget].[dbo].[YPT_QC_ANALISI_ACCIAIERIA] "
 					+ "SET ELABORATO = '0' "
@@ -2203,13 +2161,13 @@ public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 				cnd.commit();
 			else
 				cnd.rollback();
-			output.println(" Dtsx-block : Riattiva QC_ANALISI_ACCIAIERIA "+(rc > 0 ? "esito 1" : "esito 0"));
+			output.println("  Dtsx-block : riattiva_QC_ANALISI_ACCIAIERIA "+(rc > 0 ? "esito 1" : "esito 0"));
 		}catch (Exception e) {
 			e.printStackTrace(Trace.excStream);
 		}
 	}
 
-	protected void passo20(ConnectionDescriptor cnd) {
+	protected void riattiva_QC_ANALISI_ACCIAIERIA_1(ConnectionDescriptor cnd) {
 		try {
 			String stmt = "UPDATE "
 					+ "	[PantheraTarget].[dbo].[YPT_QC_ANALISI_ACCIAIERIA] "
@@ -2235,13 +2193,13 @@ public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 				cnd.commit();
 			else
 				cnd.rollback();
-			output.println(" Dtsx-block : Riattiva QC_ANALISI_ACCIAIERIA 1 "+(rc > 0 ? "esito 1" : "esito 0"));
+			output.println("  Dtsx-block : riattiva_QC_ANALISI_ACCIAIERIA_1 "+(rc > 0 ? "esito 1" : "esito 0"));
 		}catch (Exception e) {
 			e.printStackTrace(Trace.excStream);
 		}
 	}
 
-	protected void passo21(ConnectionDescriptor cnd) {
+	protected void YPT_QC_ANALISI_ACCIAIERIA_set_Elaborato_To_X(ConnectionDescriptor cnd) {
 		try {
 			String stmt = "UPDATE "
 					+ "	PantheraTarget.dbo.YPT_QC_ANALISI_ACCIAIERIA "
@@ -2273,13 +2231,13 @@ public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 				cnd.commit();
 			else
 				cnd.rollback();
-			output.println(" Dtsx-block : YPT_QC_ANALISI_ACCIAIERIA Set Elaborato to X "+(rc > 0 ? "esito 1" : "esito 0"));
+			output.println("  Dtsx-block : YPT_QC_ANALISI_ACCIAIERIA_set_Elaborato_To_X "+(rc > 0 ? "esito 1" : "esito 0"));
 		}catch (Exception e) {
 			e.printStackTrace(Trace.excStream);
 		}
 	}
 
-	protected void passo22(ConnectionDescriptor cnd) {
+	protected void riattiva_DDT_FOR_1_1(ConnectionDescriptor cnd) {
 		try {
 			String stmt = "UPDATE "
 					+ "	[PantheraTarget].[dbo].[YPT_DDT_FOR] "
@@ -2297,55 +2255,7 @@ public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 				cnd.commit();
 			else
 				cnd.rollback();
-			output.println(" Dtsx-block : Riattiva DDT_FOR 1 1 "+(rc > 0 ? "esito 1" : "esito 0"));
-		}catch (Exception e) {
-			e.printStackTrace(Trace.excStream);
-		}
-	}
-
-	protected void passo23(ConnectionDescriptor cnd) {
-		try {
-			String stmt = "UPDATE "
-					+ " PantheraTarget.dbo.YPT_DDT_FOR "
-					+ "SET "
-					+ " ELABORATO = 'X' "
-					+ "WHERE "
-					+ " EXISTS ( "
-					+ " SELECT "
-					+ "  QRY_YPT_DDT_FOR.NUM_DDT_INT, "
-					+ "  QRY_YPT_DDT_FOR.ANNO_DOC, "
-					+ "  QRY_YPT_DDT_FOR.NUM_RIGA, "
-					+ "  QRY_YPT_DDT_FOR.TIMESTAMP_AGG "
-					+ " FROM "
-					+ "  PantheraTarget.dbo.YPT_DDT_FOR QRY_YPT_DDT_FOR "
-					+ " INNER JOIN ( "
-					+ "  SELECT "
-					+ "   NUM_DDT_INT , "
-					+ "   ANNO_DOC, "
-					+ "   NUM_RIGA, "
-					+ "   MAX(TIMESTAMP_AGG) MAX_TIMESTAMP_AGG "
-					+ "  FROM "
-					+ "   PantheraTarget.dbo.YPT_DDT_FOR YPT_DDT_FOR "
-					+ "  GROUP BY "
-					+ "   NUM_DDT_INT , "
-					+ "   ANNO_DOC, "
-					+ "   NUM_RIGA) MAX_YPT_DDT_FOR ON "
-					+ "  MAX_YPT_DDT_FOR.NUM_DDT_INT = QRY_YPT_DDT_FOR.NUM_DDT_INT "
-					+ "  AND MAX_YPT_DDT_FOR.ANNO_DOC = QRY_YPT_DDT_FOR.ANNO_DOC "
-					+ "  AND MAX_YPT_DDT_FOR.NUM_RIGA = QRY_YPT_DDT_FOR.NUM_RIGA "
-					+ "  AND MAX_YPT_DDT_FOR.MAX_TIMESTAMP_AGG > QRY_YPT_DDT_FOR.TIMESTAMP_AGG "
-					+ " WHERE "
-					+ "  YPT_DDT_FOR.NUM_DDT_INT = QRY_YPT_DDT_FOR.NUM_DDT_INT "
-					+ "  AND YPT_DDT_FOR.ANNO_DOC = QRY_YPT_DDT_FOR.ANNO_DOC "
-					+ "  AND YPT_DDT_FOR.NUM_RIGA = QRY_YPT_DDT_FOR.NUM_RIGA "
-					+ "  AND YPT_DDT_FOR.TIMESTAMP_AGG = QRY_YPT_DDT_FOR.TIMESTAMP_AGG) "
-					+ " AND YPT_DDT_FOR.ELABORATO = '0'";
-			int rc = YDtsxPtExpOrdEsecRunner.eseguiUpdateSuDbExt(stmt,cnd);
-			if(rc > 0)
-				cnd.commit();
-			else
-				cnd.rollback();
-			output.println(" Dtsx-block : YPT_DDT_FOR Set Elaborato to X 1 "+(rc > 0 ? "esito 1" : "esito 0"));
+			output.println("  Dtsx-block : riattiva_DDT_FOR_1_1 "+(rc > 0 ? "esito 1" : "esito 0"));
 		}catch (Exception e) {
 			e.printStackTrace(Trace.excStream);
 		}

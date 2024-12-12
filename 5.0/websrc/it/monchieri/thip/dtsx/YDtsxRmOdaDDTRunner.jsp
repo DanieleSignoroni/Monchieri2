@@ -37,6 +37,7 @@
   YDtsxRmOdaDDTRuForm.setFooter("com.thera.thermfw.common.Footer.jsp"); 
   ((WebFormForBatchForm)  YDtsxRmOdaDDTRuForm).setGenerateThReportId(true); 
   ((WebFormForBatchForm)  YDtsxRmOdaDDTRuForm).setGenerateSSDEnabled(true); 
+  YDtsxRmOdaDDTRuForm.setWebFormModifierClass("it.monchieri.thip.dtsx.web.YDtsxRmOdaDDTRunnerFormModifier"); 
   YDtsxRmOdaDDTRuForm.setDeniedAttributeModeStr("hideNone"); 
   int mode = YDtsxRmOdaDDTRuForm.getMode(); 
   String key = YDtsxRmOdaDDTRuForm.getKey(); 
@@ -75,7 +76,7 @@
            // a completamento blocco di codice YYY a fine body con catch e gestione errori 
 %> 
 
-	<title>Estrazione dati MQT</title>
+<title>Estrazione dati MQT</title>
 <% 
   WebToolBar myToolBarTB = new com.thera.thermfw.web.WebToolBar("myToolBar", "24", "24", "16", "16", "#f7fbfd","#C8D6E1"); 
   myToolBarTB.setParent(YDtsxRmOdaDDTRuForm); 
@@ -121,20 +122,97 @@
 %>
 
 		<table cellpadding="2" cellspacing="2" height="100%" width="100%">
-			<tr><td style="height:0"><% myToolBarTB.writeChildren(out); %> 
-</td></tr>
 			<tr>
-				<td>
-					<table width="100%">	
-            			<tr>	
-            				<td>
-            				</td>
-            			</tr>
-					</table>
-				</td>
+				<td style="height: 0"><% myToolBarTB.writeChildren(out); %> 
+</td>
 			</tr>
 			<tr>
-				<td style="height:0"><% 
+				<td height="100%"><!--<span class="tabbed" id="mytabbed">-->
+<table width="100%" height="100%" cellpadding="0" cellspacing="0" style="padding-right:1px">
+   <tr valign="top">
+     <td><% 
+  WebTabbed mytabbed = new com.thera.thermfw.web.WebTabbed("mytabbed", "100%", "100%"); 
+  mytabbed.setParent(YDtsxRmOdaDDTRuForm); 
+ mytabbed.addTab("DatiGenerali", "it.monchieri.thip.dtsx.resources.YDtsxPtExpOrdEsecRunner", "DatiGenerali", "YDtsxRmOdaDDTRu", null, null, null, null); 
+  mytabbed.write(out); 
+%>
+
+     </td>
+   </tr>
+   <tr>
+     <td height="100%"><div class="tabbed_pagine" id="tabbedPagine" style="position: relative; width: 100%; height: 100%;"> <div class="tabbed_page" id="<%=mytabbed.getTabPageId("DatiGenerali")%>" style="width:100%;height:100%;overflow:auto;"><% mytabbed.startTab("DatiGenerali"); %>
+							<table cellpadding="1" cellspacing="2">
+								<tr>
+									<td><%{  WebLabelCompound label = new com.thera.thermfw.web.WebLabelCompound(null, null, "YDtsxRmOdaDDTRu", "DataEstrazioneAnalisiRm", null); 
+   label.setParent(YDtsxRmOdaDDTRuForm); 
+%><label class="<%=label.getClassType()%>" for="DataEstrazioneAnalisiRm"><%label.write(out);%></label><%}%></td>
+									<td><% 
+  WebTextInput YDtsxRmOdaDDTRuDataEstrazioneAnalisiRm =  
+     new com.thera.thermfw.web.WebTextInput("YDtsxRmOdaDDTRu", "DataEstrazioneAnalisiRm"); 
+  YDtsxRmOdaDDTRuDataEstrazioneAnalisiRm.setShowCalendarBtn(true); 
+  YDtsxRmOdaDDTRuDataEstrazioneAnalisiRm.setParent(YDtsxRmOdaDDTRuForm); 
+%>
+<input class="<%=YDtsxRmOdaDDTRuDataEstrazioneAnalisiRm.getClassType()%>" id="<%=YDtsxRmOdaDDTRuDataEstrazioneAnalisiRm.getId()%>" maxlength="<%=YDtsxRmOdaDDTRuDataEstrazioneAnalisiRm.getMaxLength()%>" name="<%=YDtsxRmOdaDDTRuDataEstrazioneAnalisiRm.getName()%>" size="<%=YDtsxRmOdaDDTRuDataEstrazioneAnalisiRm.getSize()%>" type="text"><% 
+  YDtsxRmOdaDDTRuDataEstrazioneAnalisiRm.write(out); 
+%>
+</td>
+								</tr>
+								<tr>
+									<td><%{  WebLabelCompound label = new com.thera.thermfw.web.WebLabelCompound(null, null, "YDtsxRmOdaDDTRu", "DataEstrazioneAnalisiAcc", null); 
+   label.setParent(YDtsxRmOdaDDTRuForm); 
+%><label class="<%=label.getClassType()%>" for="DataEstrazioneAnalisiAcc"><%label.write(out);%></label><%}%></td>
+									<td><% 
+  WebTextInput YDtsxRmOdaDDTRuDataEstrazioneAnalisiAcc =  
+     new com.thera.thermfw.web.WebTextInput("YDtsxRmOdaDDTRu", "DataEstrazioneAnalisiAcc"); 
+  YDtsxRmOdaDDTRuDataEstrazioneAnalisiAcc.setShowCalendarBtn(true); 
+  YDtsxRmOdaDDTRuDataEstrazioneAnalisiAcc.setParent(YDtsxRmOdaDDTRuForm); 
+%>
+<input class="<%=YDtsxRmOdaDDTRuDataEstrazioneAnalisiAcc.getClassType()%>" id="<%=YDtsxRmOdaDDTRuDataEstrazioneAnalisiAcc.getId()%>" maxlength="<%=YDtsxRmOdaDDTRuDataEstrazioneAnalisiAcc.getMaxLength()%>" name="<%=YDtsxRmOdaDDTRuDataEstrazioneAnalisiAcc.getName()%>" size="<%=YDtsxRmOdaDDTRuDataEstrazioneAnalisiAcc.getSize()%>" type="text"><% 
+  YDtsxRmOdaDDTRuDataEstrazioneAnalisiAcc.write(out); 
+%>
+</td>
+								</tr>
+								<tr>
+									<td><%{  WebLabelCompound label = new com.thera.thermfw.web.WebLabelCompound(null, null, "YDtsxRmOdaDDTRu", "DataEstrazioneOrdFor", null); 
+   label.setParent(YDtsxRmOdaDDTRuForm); 
+%><label class="<%=label.getClassType()%>" for="DataEstrazioneOrdFor"><%label.write(out);%></label><%}%></td>
+									<td><% 
+  WebTextInput YDtsxRmOdaDDTRuDataEstrazioneOrdFor =  
+     new com.thera.thermfw.web.WebTextInput("YDtsxRmOdaDDTRu", "DataEstrazioneOrdFor"); 
+  YDtsxRmOdaDDTRuDataEstrazioneOrdFor.setShowCalendarBtn(true); 
+  YDtsxRmOdaDDTRuDataEstrazioneOrdFor.setParent(YDtsxRmOdaDDTRuForm); 
+%>
+<input class="<%=YDtsxRmOdaDDTRuDataEstrazioneOrdFor.getClassType()%>" id="<%=YDtsxRmOdaDDTRuDataEstrazioneOrdFor.getId()%>" maxlength="<%=YDtsxRmOdaDDTRuDataEstrazioneOrdFor.getMaxLength()%>" name="<%=YDtsxRmOdaDDTRuDataEstrazioneOrdFor.getName()%>" size="<%=YDtsxRmOdaDDTRuDataEstrazioneOrdFor.getSize()%>" type="text"><% 
+  YDtsxRmOdaDDTRuDataEstrazioneOrdFor.write(out); 
+%>
+</td>
+								</tr>
+								<tr>
+									<td><%{  WebLabelCompound label = new com.thera.thermfw.web.WebLabelCompound(null, null, "YDtsxRmOdaDDTRu", "DataEstrazioneDdtFor", null); 
+   label.setParent(YDtsxRmOdaDDTRuForm); 
+%><label class="<%=label.getClassType()%>" for="DataEstrazioneDdtFor"><%label.write(out);%></label><%}%></td>
+									<td><% 
+  WebTextInput YDtsxRmOdaDDTRuDataEstrazioneDdtFor =  
+     new com.thera.thermfw.web.WebTextInput("YDtsxRmOdaDDTRu", "DataEstrazioneDdtFor"); 
+  YDtsxRmOdaDDTRuDataEstrazioneDdtFor.setShowCalendarBtn(true); 
+  YDtsxRmOdaDDTRuDataEstrazioneDdtFor.setParent(YDtsxRmOdaDDTRuForm); 
+%>
+<input class="<%=YDtsxRmOdaDDTRuDataEstrazioneDdtFor.getClassType()%>" id="<%=YDtsxRmOdaDDTRuDataEstrazioneDdtFor.getId()%>" maxlength="<%=YDtsxRmOdaDDTRuDataEstrazioneDdtFor.getMaxLength()%>" name="<%=YDtsxRmOdaDDTRuDataEstrazioneDdtFor.getName()%>" size="<%=YDtsxRmOdaDDTRuDataEstrazioneDdtFor.getSize()%>" type="text"><% 
+  YDtsxRmOdaDDTRuDataEstrazioneDdtFor.write(out); 
+%>
+</td>
+								</tr>
+							</table>
+					<% mytabbed.endTab(); %> 
+</div>
+				</div><% mytabbed.endTabbed();%> 
+
+     </td>
+   </tr>
+</table><!--</span>--></td>
+			</tr>
+			<tr>
+				<td style="height: 0"><% 
   WebErrorList errorList = new com.thera.thermfw.web.WebErrorList(); 
   errorList.setParent(YDtsxRmOdaDDTRuForm); 
   errorList.write(out); 

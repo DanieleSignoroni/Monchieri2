@@ -1,13 +1,13 @@
 <tfml>
   <generator type="batchForm" />
-	<form name="YDtsxRmOdaDDTRuForm" errorList="yes"
+	<form name="YDtsxPtExpOrdEsForm" errorList="yes"
 				locktype="nolock"
-				classHdr="YDtsxRmOdaDDTRu"
+				classHdr="YDtsxPtExpOrdEs"
 				menubar="no"
 				inputFont="Arial,10"
 				toolbar="yes"
 				onLoadPresent="no"
-				webFormModifierClass="it.monchieri.thip.dtsx.web.YDtsxRmOdaDDTRunnerFormModifier"
+				webFormModifierClass="it.monchieri.thip.dtsx.web.YDtsxPtExpOrdEsecRunnerFormModifier"
 				header="com.thera.thermfw.common.Header.jsp"
 				footer="com.thera.thermfw.common.Footer.jsp">
 			    
@@ -16,10 +16,7 @@
 		</toolbar>
 		<tabbed name="mytabbed" height="100%" width="100%">
     		<tab name="DatiGenerali" resourceFile="it.monchieri.thip.dtsx.resources.YDtsxPtExpOrdEsecRunner" resourceID="DatiGenerali">
-    			<textinput classAD="DataEstrazioneAnalisiRm" name="DataEstrazioneAnalisiRm" showCalendarBtn ="yes"/>
-    			<textinput classAD="DataEstrazioneAnalisiAcc" name="DataEstrazioneAnalisiAcc" showCalendarBtn ="yes"/>
-    			<textinput classAD="DataEstrazioneOrdFor" name="DataEstrazioneOrdFor" showCalendarBtn ="yes"/>
-    			<textinput classAD="DataEstrazioneDdtFor" name="DataEstrazioneDdtFor" showCalendarBtn ="yes"/>
+    			<textinput classAD="DataEstrazioneOrdEsec" name="DataEstrazioneOrdEsec" showCalendarBtn ="yes"/>
     		</tab>
    		 </tabbed>
 	</form>

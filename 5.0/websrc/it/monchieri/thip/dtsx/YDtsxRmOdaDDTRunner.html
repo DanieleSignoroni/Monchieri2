@@ -1,24 +1,44 @@
 <html>
 <head>
-	<title>Estrazione dati MQT</title>
+<title>Estrazione dati MQT</title>
 </head>
 <link href="thermweb/css/thermGrid.css" rel="STYLESHEET" type="text/css" />
 <body topmargin="0" bottommargin="0" leftmargin="0" rightmargin="0">
 	<form name="YDtsxRmOdaDDTRuForm">
 		<table height="100%" width="100%" cellpadding="2" cellspacing="2">
-			<tr><td style="height:0"><span class="toolbar" id="myToolBar"></span></td></tr>
 			<tr>
-				<td>
-					<table width="100%">	
-            			<tr>	
-            				<td>
-            				</td>
-            			</tr>
-					</table>
-				</td>
+				<td style="height: 0"><span class="toolbar" id="myToolBar"></span></td>
 			</tr>
 			<tr>
-				<td style="height:0"><span class="errorlist"></span></td>
+				<td><span class="tabbed" id="mytabbed"> <span
+						class="tab" id="DatiGenerali">
+							<table cellspacing="2" cellpadding="1">
+								<tr>
+									<td><label for="DataEstrazioneAnalisiRm"></label></td>
+									<td><input type="text" name="DataEstrazioneAnalisiRm"
+										id="DataEstrazioneAnalisiRm" /></td>
+								</tr>
+								<tr>
+									<td><label for="DataEstrazioneAnalisiAcc"></label></td>
+									<td><input type="text" name="DataEstrazioneAnalisiAcc"
+										id="DataEstrazioneAnalisiAcc" /></td>
+								</tr>
+								<tr>
+									<td><label for="DataEstrazioneOrdFor"></label></td>
+									<td><input type="text" name="DataEstrazioneOrdFor"
+										id="DataEstrazioneOrdFor" /></td>
+								</tr>
+								<tr>
+									<td><label for="DataEstrazioneDdtFor"></label></td>
+									<td><input type="text" name="DataEstrazioneDdtFor"
+										id="DataEstrazioneDdtFor" /></td>
+								</tr>
+							</table>
+					</span>
+				</span></td>
+			</tr>
+			<tr>
+				<td style="height: 0"><span class="errorlist"></span></td>
 			</tr>
 		</table>
 	</form>
