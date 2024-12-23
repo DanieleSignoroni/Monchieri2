@@ -303,7 +303,7 @@ public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 				ex.printStackTrace(Trace.excStream);
 			} finally {
 				if (cnd != null) {
-
+					cnd.closeConnection();
 					ConnectionManager.popConnection(cnd);
 				}
 			}
@@ -355,7 +355,7 @@ public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 				ex.printStackTrace(Trace.excStream);
 			} finally {
 				if (cnd != null) {
-
+					cnd.closeConnection();
 					ConnectionManager.popConnection(cnd);
 				}
 			}
@@ -410,7 +410,7 @@ public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 				ex.printStackTrace(Trace.excStream);
 			} finally {
 				if (cnd != null) {
-
+					cnd.closeConnection();
 					ConnectionManager.popConnection(cnd);
 				}
 			}
@@ -472,7 +472,7 @@ public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 				ex.printStackTrace(Trace.excStream);
 			} finally {
 				if (cnd != null) {
-
+					cnd.closeConnection();
 					ConnectionManager.popConnection(cnd);
 				}
 			}
@@ -513,6 +513,11 @@ public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 					} catch (SQLException e) {
 						e.printStackTrace(Trace.excStream);
 					}
+				}
+				try {
+					cnd.closeConnection();
+				} catch (SQLException e) {
+					e.printStackTrace(Trace.excStream);
 				}
 				ConnectionManager.popConnection(cnd);
 			}

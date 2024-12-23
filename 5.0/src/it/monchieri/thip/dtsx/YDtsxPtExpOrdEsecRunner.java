@@ -173,7 +173,7 @@ public class YDtsxPtExpOrdEsecRunner extends BatchRunnable implements Authorizab
 				ex.printStackTrace(Trace.excStream);
 			} finally {
 				if (cnd != null) {
-
+					cnd.closeConnection();
 					ConnectionManager.popConnection(cnd);
 				}
 			}
