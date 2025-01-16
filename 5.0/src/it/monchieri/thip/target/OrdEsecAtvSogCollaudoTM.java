@@ -41,7 +41,7 @@ public class OrdEsecAtvSogCollaudoTM extends TableManager {
   
   public static final String ORP_EFF_DOC_ID = "ORP_EFF_DOC_ID";
 
-  public static final String TABLE_NAME = SystemParam.getSchema("THIPPERS") + "ORD_ESEC_ATV_SOG_COLLAUDO";
+  public static final String TABLE_NAME = SystemParam.getSchema("THIPPERS") + "ORD_ESEC_ATV_SOG_COLLAUDO_20";
   private static final String CLASS_NAME = OrdEsecAtvSogCollaudo.class.getName();
 
   private static TableManager cInstance;
@@ -90,7 +90,7 @@ public class OrdEsecAtvSogCollaudoTM extends TableManager {
     addAttribute("ValNomProposto",    VAL_NOM_PROPOSTO);
     addAttribute("FaseObbl",          FASE_OBBL);
     addAttribute("CmtrWhitness",      CMTR_WHITNESS);
-    addAttribute("IdNumeroOrp", ORP_EFF_DOC_ID);
+    //addAttribute("IdNumeroOrp", ORP_EFF_DOC_ID);
 
     // If this table has a primary key, uncomment or modify accordingly:
     // setKeys(ID_AZIENDA + ", " + ID_ORIGINALE + ", ...);

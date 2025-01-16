@@ -93,7 +93,7 @@ public class YPTExpOrdEsecTM extends TableManager {
 		addAttribute("CodCausDoc", COD_CAUS_DOC);
 		addAttribute("NoteConsegna", NOTE_CONSEGNA);
 		addAttribute("CodDep", COD_DEP);
-		addAttribute("CodDep2", COD_DEP_2);
+		//addAttribute("CodDep2", COD_DEP_2);
 		addAttribute("CodArt", COD_ART);
 		addAttribute("CodVarMateriale", COD_VAR_MATERIALE);
 		addAttribute("CodLot", COD_LOT);

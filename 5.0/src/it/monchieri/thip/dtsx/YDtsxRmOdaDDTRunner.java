@@ -68,7 +68,7 @@ import it.thera.thip.qualita.controllo.MisuraFase;
 
 public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 
-	public static final String NOME_DB_EXT = "PantheraTarget_test";
+	public static final String NOME_DB_EXT = "PantheraTarget";
 	public static final String UTENTE_DB_EXT = "Panthera";
 	public static final String PWD_DB_EXT = "panthera";
 	public static final String SRV_DB_EXT = "SRVDB.fmonchieri.locale";
@@ -250,9 +250,9 @@ public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 		}
 		try {
 			int rc = esportazioneAnalisiChimicheTarget();
-			rc += esportazioneOrdFor();
-			rc += esportazioneOrdDdt();
-			rc += esportazioneAnalisiAcciaieriaTarget();
+//			rc += esportazioneOrdFor();
+//			rc += esportazioneOrdDdt();
+//			rc += esportazioneAnalisiAcciaieriaTarget();
 			if(rc < ErrorCodes.OK) {
 				return false;
 			}
@@ -498,7 +498,7 @@ public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 			if(cnd != null) {
 				ConnectionManager.pushConnection(cnd);
 				for(PersistentObject analisi : pos) {
-					result += analisi.save();
+					analisi.save();
 				}
 				cnd.commit();
 			}

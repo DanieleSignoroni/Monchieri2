@@ -51,7 +51,7 @@ import it.thera.thip.produzione.ordese.OrdineEsecutivoTM;
 
 public class YDtsxPtExpOrdEsecRunner extends BatchRunnable implements Authorizable{
 
-	public static final String NOME_DB_EXT = "PantheraTarget_test";
+	public static final String NOME_DB_EXT = "PantheraTarget";
 	public static final String UTENTE_DB_EXT = "Panthera";
 	public static final String PWD_DB_EXT = "panthera";
 	public static final String SRV_DB_EXT = "SRVDB.fmonchieri.locale";
@@ -140,44 +140,47 @@ public class YDtsxPtExpOrdEsecRunner extends BatchRunnable implements Authorizab
 			timestamp = elabAnalisiQcRm.getDatiComuniEstesi().getTimestampAgg();
 		output.println("  Estraggo "+OrdineEsecutivoTM.TABLE_NAME+" con TIMESTAMP_AGG > "+timestamp.toString());
 		List lista = listaOrdiniEsecutiviTarget(timestamp);
+		lista.clear();
 		output.println("  Estratte "+lista.size()+" "+OrdineEsecutivoTM.TABLE_NAME+" ");
-		int rc = YDtsxRmOdaDDTRunner.esportaOggettiVersoTarget(lista);
-		output.println("  Esportazione "+YPTExpOrdEsecTM.TABLE_NAME+" verso Target ");
-		if(rc == ErrorCodes.OK) {
-			elabAnalisiQcRm.setDirty(true);
-			if(elabAnalisiQcRm.save() > 0) {
-				ConnectionManager.commit();
-			}
-
-			ConnectionDescriptor cnd = YDtsxPtExpOrdEsecRunner.externalConnectionDescriptor(
-					NOME_DB_EXT,
-					UTENTE_DB_EXT,
-					PWD_DB_EXT, 
-					SRV_DB_EXT, 
-					PORTA_DB_EXT);
-			try {
-				if(cnd != null) {
-					ConnectionManager.pushConnection(cnd);
-					Update_ESEGUITA(cnd);
-					Update_ORP_EFF_USER_PROVNUM(cnd);
-					Update_ORP_EFF_USER_IDENTCLI(cnd);
-					Update_ORP_EFF_USER_CODCLI(cnd);
-					Update_ORP_EFF_COD_CF(cnd);
-					UPDATE_FM(cnd);
-					Update_SC(cnd);
-					Aggiorna_ORP_EFF_COD_CF(cnd);
-					Update_YPT_EXP_ORD_ESEC_COD_CF(cnd);
-
+		int rc = 0;
+		if(lista.size() > 0) {
+			rc = YDtsxRmOdaDDTRunner.esportaOggettiVersoTarget(lista);
+			output.println("  Esportazione "+YPTExpOrdEsecTM.TABLE_NAME+" verso Target ");
+			if(rc >= ErrorCodes.OK) {
+				elabAnalisiQcRm.setDirty(true);
+				if(elabAnalisiQcRm.save() > 0) {
+					ConnectionManager.commit();
 				}
-			} catch (Throwable ex) {
-				ex.printStackTrace(Trace.excStream);
-			} finally {
-				if (cnd != null) {
-					cnd.closeConnection();
-					ConnectionManager.popConnection(cnd);
-				}
-			}
 
+				ConnectionDescriptor cnd = YDtsxPtExpOrdEsecRunner.externalConnectionDescriptor(
+						NOME_DB_EXT,
+						UTENTE_DB_EXT,
+						PWD_DB_EXT, 
+						SRV_DB_EXT, 
+						PORTA_DB_EXT);
+				try {
+					if(cnd != null) {
+						ConnectionManager.pushConnection(cnd);
+						Update_ESEGUITA(cnd);
+						//Update_ORP_EFF_USER_PROVNUM(cnd);
+						//Update_ORP_EFF_USER_IDENTCLI(cnd);
+						//Update_ORP_EFF_USER_CODCLI(cnd);
+						Update_ORP_EFF_COD_CF(cnd);
+						UPDATE_FM(cnd);
+						Update_SC(cnd);
+						Aggiorna_ORP_EFF_COD_CF(cnd);
+						Update_YPT_EXP_ORD_ESEC_COD_CF(cnd);
+					}
+				} catch (Throwable ex) {
+					ex.printStackTrace(Trace.excStream);
+				} finally {
+					if (cnd != null) {
+						cnd.closeConnection();
+						ConnectionManager.popConnection(cnd);
+					}
+				}
+
+			}
 		}
 		output.println("  Esportazione verso "+YPTExpOrdEsecTM.TABLE_NAME+" avvenuta con "+(rc > 0 ? "successo" : "errori"));
 		output.println(" ----------------- Fine estrazione "+YPTExpOrdEsecTM.TABLE_NAME+" -------------------- ");
@@ -193,7 +196,7 @@ public class YDtsxPtExpOrdEsecRunner extends BatchRunnable implements Authorizab
 
 			YPTExpOrdEsec ordine = (YPTExpOrdEsec) Factory.createObject(YPTExpOrdEsec.class);
 			ordine.setDocId(ordEsec.getNumeroOrdFmt());
-			ordine.setAnnoDoc(ordEsec.getIdAnnoOrdine());
+			ordine.setAnnoDoc(ordEsec.getIdAnnoOrdine().trim());
 			String lastSix = ordEsec.getIdNumeroOrdine().substring(ordEsec.getIdNumeroOrdine().length() - 6);
 			int numDoc = Integer.parseInt(lastSix);
 			ordine.setNumDoc(BigDecimal.valueOf(numDoc).setScale(0,RoundingMode.DOWN));
@@ -359,7 +362,7 @@ public class YDtsxPtExpOrdEsecRunner extends BatchRunnable implements Authorizab
 		String stmt = "SELECT "
 				+ "	* "
 				+ "FROM "
-				+ "	MAME.MQT_ORD_ESEC_PARENTCHILD_ESEPRD "
+				+ "	THIPPERS.MQT_ORD_ESEC_PARENTCHILD_ESEPRD "
 				+ "WHERE "
 				+ "	ID_AZIENDA_PRTN = '"+ordEsec.getIdAzienda()+"' "
 				+ "	AND ID_NUMERO_ORD_PRTN = '"+ordEsec.getIdNumeroOrdine()+"' "
@@ -368,7 +371,7 @@ public class YDtsxPtExpOrdEsecRunner extends BatchRunnable implements Authorizab
 				+ "	SELECT "
 				+ "		MIN(GENERATION) "
 				+ "	FROM "
-				+ "		MAME.MQT_ORD_ESEC_PARENTCHILD_ESEPRD "
+				+ "		THIPPERS.MQT_ORD_ESEC_PARENTCHILD_ESEPRD "
 				+ "	WHERE "
 				+ "		ID_AZIENDA_PRTN = '"+ordEsec.getIdAzienda()+"' "
 				+ "		AND ID_NUMERO_ORD_PRTN = '"+ordEsec.getIdNumeroOrdine()+"' "
@@ -617,7 +620,7 @@ public class YDtsxPtExpOrdEsecRunner extends BatchRunnable implements Authorizab
 					+ "	BBCLIPT.T01CD = ORD_ESEC.ID_AZIENDA "
 					+ "	AND BBCLIPT.CLICD = ORD_ESEC.R_CLIENTE "
 					+ "WHERE "
-					+ "	ORD_ESEC.ID_AZIENDA = ''050'' "
+					+ "	ORD_ESEC.ID_AZIENDA = ''001'' "
 					+ "	AND BBCLIPT.CLICFEST IS NOT NULL') ORD_ESEC  "
 					+ "WHERE RTRIM(ORD_ESEC.ID_ANNO_ORD )+ CASE LEFT(ORD_ESEC.ID_NUMERO_ORD, 2) "
 					+ "		WHEN 'P1' THEN '-ORP-' "
@@ -746,7 +749,7 @@ public class YDtsxPtExpOrdEsecRunner extends BatchRunnable implements Authorizab
 			e.printStackTrace(Trace.excStream);
 		}
 	}
-	
+
 	protected void UPDATE_FM(ConnectionDescriptor cnd) {
 		try {
 			String Aggiorna_ORP_EFF_COD_CF = "UPDATE [MAME].[YPT_EXP_ORD_ESEC] "
@@ -809,7 +812,7 @@ public class YDtsxPtExpOrdEsecRunner extends BatchRunnable implements Authorizab
 
 	@Override
 	protected String getClassAdCollectionName() {
-		return "YDtsxPtExpOrdEsecRunner";
+		return "YDtsxPtExpOrdEs";
 	}
 
 }
