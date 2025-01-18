@@ -1,5 +1,6 @@
 package it.monchieri.thip.target;
 
+import java.math.BigDecimal;
 import java.sql.Date;
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -41,58 +42,58 @@ public abstract class YPTQcAnalisiAcciaieriaPO extends PersistentObject implemen
 	protected String tipoTrat;
 	protected String note;
 	protected Timestamp timestampAgg;
-	protected Float al;
-	protected Float alsol;
-	protected Float as_;
-	protected Float b_;
-	protected Float bi;
-	protected Float c_;
-	protected Float ca;
-	protected Float cb;
-	protected Float ce;
-	protected Float co;
-	protected Float cr;
-	protected Float crEq;
-	protected Float cu;
-	protected Float h_;
+	protected BigDecimal al;
+	protected BigDecimal alsol;
+	protected BigDecimal as_;
+	protected BigDecimal b_;
+	protected BigDecimal bi;
+	protected BigDecimal c_;
+	protected BigDecimal ca;
+	protected BigDecimal cb;
+	protected BigDecimal ce;
+	protected BigDecimal co;
+	protected BigDecimal cr;
+	protected BigDecimal crEq;
+	protected BigDecimal cu;
+	protected BigDecimal h_;
 	protected Integer hPpmOPerc;
-	protected Float jf;
-	protected Float mn;
-	protected Float mo;
-	protected Float n_;
+	protected BigDecimal jf;
+	protected BigDecimal mn;
+	protected BigDecimal mo;
+	protected BigDecimal n_;
 	protected Integer nPpmOPerc;
-	protected Float nb;
-	protected Float ni;
-	protected Float o_;
+	protected BigDecimal nb;
+	protected BigDecimal ni;
+	protected BigDecimal o_;
 	protected Integer oPpmOPerc;
-	protected Float p_;
-	protected Float pb;
-	protected Float pcm;
-	protected Float pre;
-	protected Float s_;
-	protected Float sb;
-	protected Float si;
-	protected Float sn;
-	protected Float ta;
-	protected Float ti;
-	protected Float v_;
-	protected Float w_;
-	protected Float xf;
-	protected Float zr;
-	protected Float cN;
-	protected Float fe;
-	protected Float nbTa;
-	protected Float y_;
+	protected BigDecimal p_;
+	protected BigDecimal pb;
+	protected BigDecimal pcm;
+	protected BigDecimal pre;
+	protected BigDecimal s_;
+	protected BigDecimal sb;
+	protected BigDecimal si;
+	protected BigDecimal sn;
+	protected BigDecimal ta;
+	protected BigDecimal ti;
+	protected BigDecimal v_;
+	protected BigDecimal w_;
+	protected BigDecimal xf;
+	protected BigDecimal zr;
+	protected BigDecimal cN;
+	protected BigDecimal fe;
+	protected BigDecimal nbTa;
+	protected BigDecimal y_;
 	protected String acFormula1;
-	protected Float acFormula1Valore;
+	protected BigDecimal acFormula1Valore;
 	protected String acFormula2;
-	protected Float acFormula2Valore;
+	protected BigDecimal acFormula2Valore;
 	protected String acFormula3;
-	protected Float acFormula3Valore;
+	protected BigDecimal acFormula3Valore;
 	protected String acFormula4;
-	protected Float acFormula4Valore;
+	protected BigDecimal acFormula4Valore;
 	protected String acFormula5;
-	protected Float acFormula5Valore;
+	protected BigDecimal acFormula5Valore;
 	protected String elaborato;
 	
 	@SuppressWarnings("rawtypes")
@@ -216,380 +217,380 @@ public abstract class YPTQcAnalisiAcciaieriaPO extends PersistentObject implemen
 		setDirty();
 	}
 
-	public Float getAl() {
+	public BigDecimal getAl() {
 		return al;
 	}
 
-	public void setAl(Float al) {
+	public void setAl(BigDecimal al) {
 		this.al = al;
 		setDirty();
 	}
 
-	public Float getAlsol() {
+	public BigDecimal getAlsol() {
 		return alsol;
 	}
 
-	public void setAlsol(Float alsol) {
+	public void setAlsol(BigDecimal alsol) {
 		this.alsol = alsol;
 		setDirty();
 	}
 
-	public Float getAs_() {
+	public BigDecimal getAs_() {
 		return as_;
 	}
 
-	public void setAs_(Float as_) {
+	public void setAs_(BigDecimal as_) {
 		this.as_ = as_;
 		setDirty();
 	}
 
-	public Float getB_() {
+	public BigDecimal getB_() {
 		return b_;
 	}
 
-	public void setB_(Float b_) {
+	public void setB_(BigDecimal b_) {
 		this.b_ = b_;
 		setDirty();
 	}
 
-	public Float getBi() {
+	public BigDecimal getBi() {
 		return bi;
 	}
 
-	public void setBi(Float bi) {
+	public void setBi(BigDecimal bi) {
 		this.bi = bi;
 		setDirty();
 	}
 
-	public Float getC_() {
+	public BigDecimal getC_() {
 		return c_;
 	}
 
-	public void setC_(Float c_) {
+	public void setC_(BigDecimal c_) {
 		this.c_ = c_;
 		setDirty();
 	}
 
-	public Float getCa() {
+	public BigDecimal getCa() {
 		return ca;
 	}
 
-	public void setCa(Float ca) {
+	public void setCa(BigDecimal ca) {
 		this.ca = ca;
 		setDirty();
 	}
 
-	public Float getCb() {
+	public BigDecimal getCb() {
 		return cb;
 	}
 
-	public void setCb(Float cb) {
+	public void setCb(BigDecimal cb) {
 		this.cb = cb;
 		setDirty();
 	}
 
-	public Float getCe() {
+	public BigDecimal getCe() {
 		return ce;
 	}
 
-	public void setCe(Float ce) {
+	public void setCe(BigDecimal ce) {
 		this.ce = ce;
 		setDirty();
 	}
 
-	public Float getCo() {
+	public BigDecimal getCo() {
 		return co;
 	}
 
-	public void setCo(Float co) {
+	public void setCo(BigDecimal co) {
 		this.co = co;
 		setDirty();
 	}
 
-	public Float getCr() {
+	public BigDecimal getCr() {
 		return cr;
 	}
 
-	public void setCr(Float cr) {
+	public void setCr(BigDecimal cr) {
 		this.cr = cr;
 		setDirty();
 	}
 
-	public Float getCrEq() {
+	public BigDecimal getCrEq() {
 		return crEq;
 	}
 
-	public void setCrEq(Float crEq) {
+	public void setCrEq(BigDecimal crEq) {
 		this.crEq = crEq;
 		setDirty();
 	}
 
-	public Float getCu() {
+	public BigDecimal getCu() {
 		return cu;
 	}
 
-	public void setCu(Float cu) {
+	public void setCu(BigDecimal cu) {
 		this.cu = cu;
 		setDirty();
 	}
 
-	public Float getH_() {
+	public BigDecimal getH_() {
 		return h_;
 	}
 
-	public void setH_(Float h_) {
+	public void setH_(BigDecimal h_) {
 		this.h_ = h_;
 		setDirty();
 	}
 
-	public Integer gethPpmOPerc() {
+	public Integer getHPpmOPerc() {
 		return hPpmOPerc;
 	}
 
-	public void sethPpmOPerc(Integer hPpmOPerc) {
+	public void setHPpmOPerc(Integer hPpmOPerc) {
 		this.hPpmOPerc = hPpmOPerc;
 		setDirty();
 	}
 
-	public Float getJf() {
+	public BigDecimal getJf() {
 		return jf;
 	}
 
-	public void setJf(Float jf) {
+	public void setJf(BigDecimal jf) {
 		this.jf = jf;
 		setDirty();
 	}
 
-	public Float getMn() {
+	public BigDecimal getMn() {
 		return mn;
 	}
 
-	public void setMn(Float mn) {
+	public void setMn(BigDecimal mn) {
 		this.mn = mn;
 		setDirty();
 	}
 
-	public Float getMo() {
+	public BigDecimal getMo() {
 		return mo;
 	}
 
-	public void setMo(Float mo) {
+	public void setMo(BigDecimal mo) {
 		this.mo = mo;
 		setDirty();
 	}
 
-	public Float getN_() {
+	public BigDecimal getN_() {
 		return n_;
 	}
 
-	public void setN_(Float n_) {
+	public void setN_(BigDecimal n_) {
 		this.n_ = n_;
 		setDirty();
 	}
 
-	public Integer getnPpmOPerc() {
+	public Integer getNPpmOPerc() {
 		return nPpmOPerc;
 	}
 
-	public void setnPpmOPerc(Integer nPpmOPerc) {
+	public void setNPpmOPerc(Integer nPpmOPerc) {
 		this.nPpmOPerc = nPpmOPerc;
 		setDirty();
 	}
 
-	public Float getNb() {
+	public BigDecimal getNb() {
 		return nb;
 	}
 
-	public void setNb(Float nb) {
+	public void setNb(BigDecimal nb) {
 		this.nb = nb;
 		setDirty();
 	}
 
-	public Float getNi() {
+	public BigDecimal getNi() {
 		return ni;
 	}
 
-	public void setNi(Float ni) {
+	public void setNi(BigDecimal ni) {
 		this.ni = ni;
 		setDirty();
 	}
 
-	public Float getO_() {
+	public BigDecimal getO_() {
 		return o_;
 	}
 
-	public void setO_(Float o_) {
+	public void setO_(BigDecimal o_) {
 		this.o_ = o_;
 		setDirty();
 	}
 
-	public Integer getoPpmOPerc() {
+	public Integer getOPpmOPerc() {
 		return oPpmOPerc;
 	}
 
-	public void setoPpmOPerc(Integer oPpmOPerc) {
+	public void setOPpmOPerc(Integer oPpmOPerc) {
 		this.oPpmOPerc = oPpmOPerc;
 		setDirty();
 	}
 
-	public Float getP_() {
+	public BigDecimal getP_() {
 		return p_;
 	}
 
-	public void setP_(Float p_) {
+	public void setP_(BigDecimal p_) {
 		this.p_ = p_;
 		setDirty();
 	}
 
-	public Float getPb() {
+	public BigDecimal getPb() {
 		return pb;
 	}
 
-	public void setPb(Float pb) {
+	public void setPb(BigDecimal pb) {
 		this.pb = pb;
 		setDirty();
 	}
 
-	public Float getPcm() {
+	public BigDecimal getPcm() {
 		return pcm;
 	}
 
-	public void setPcm(Float pcm) {
+	public void setPcm(BigDecimal pcm) {
 		this.pcm = pcm;
 		setDirty();
 	}
 
-	public Float getPre() {
+	public BigDecimal getPre() {
 		return pre;
 	}
 
-	public void setPre(Float pre) {
+	public void setPre(BigDecimal pre) {
 		this.pre = pre;
 		setDirty();
 	}
 
-	public Float getS_() {
+	public BigDecimal getS_() {
 		return s_;
 	}
 
-	public void setS_(Float s_) {
+	public void setS_(BigDecimal s_) {
 		this.s_ = s_;
 		setDirty();
 	}
 
-	public Float getSb() {
+	public BigDecimal getSb() {
 		return sb;
 	}
 
-	public void setSb(Float sb) {
+	public void setSb(BigDecimal sb) {
 		this.sb = sb;
 		setDirty();
 	}
 
-	public Float getSi() {
+	public BigDecimal getSi() {
 		return si;
 	}
 
-	public void setSi(Float si) {
+	public void setSi(BigDecimal si) {
 		this.si = si;
 		setDirty();
 	}
 
-	public Float getSn() {
+	public BigDecimal getSn() {
 		return sn;
 	}
 
-	public void setSn(Float sn) {
+	public void setSn(BigDecimal sn) {
 		this.sn = sn;
 		setDirty();
 	}
 
-	public Float getTa() {
+	public BigDecimal getTa() {
 		return ta;
 	}
 
-	public void setTa(Float ta) {
+	public void setTa(BigDecimal ta) {
 		this.ta = ta;
 		setDirty();
 	}
 
-	public Float getTi() {
+	public BigDecimal getTi() {
 		return ti;
 	}
 
-	public void setTi(Float ti) {
+	public void setTi(BigDecimal ti) {
 		this.ti = ti;
 		setDirty();
 	}
 
-	public Float getV_() {
+	public BigDecimal getV_() {
 		return v_;
 	}
 
-	public void setV_(Float v_) {
+	public void setV_(BigDecimal v_) {
 		this.v_ = v_;
 		setDirty();
 	}
 
-	public Float getW_() {
+	public BigDecimal getW_() {
 		return w_;
 	}
 
-	public void setW_(Float w_) {
+	public void setW_(BigDecimal w_) {
 		this.w_ = w_;
 		setDirty();
 	}
 
-	public Float getXf() {
+	public BigDecimal getXf() {
 		return xf;
 	}
 
-	public void setXf(Float xf) {
+	public void setXf(BigDecimal xf) {
 		this.xf = xf;
 		setDirty();
 	}
 
-	public Float getZr() {
+	public BigDecimal getZr() {
 		return zr;
 	}
 
-	public void setZr(Float zr) {
+	public void setZr(BigDecimal zr) {
 		this.zr = zr;
 		setDirty();
 	}
 
-	public Float getcN() {
+	public BigDecimal getC_N() {
 		return cN;
 	}
 
-	public void setcN(Float cN) {
+	public void setC_N(BigDecimal cN) {
 		this.cN = cN;
 		setDirty();
 	}
 
-	public Float getFe() {
+	public BigDecimal getFe() {
 		return fe;
 	}
 
-	public void setFe(Float fe) {
+	public void setFe(BigDecimal fe) {
 		this.fe = fe;
 		setDirty();
 	}
 
-	public Float getNbTa() {
+	public BigDecimal getNbTa() {
 		return nbTa;
 	}
 
-	public void setNbTa(Float nbTa) {
+	public void setNbTa(BigDecimal nbTa) {
 		this.nbTa = nbTa;
 		setDirty();
 	}
 
-	public Float getY_() {
+	public BigDecimal getY_() {
 		return y_;
 	}
 
-	public void setY_(Float y_) {
+	public void setY_(BigDecimal y_) {
 		this.y_ = y_;
 		setDirty();
 	}
@@ -603,11 +604,11 @@ public abstract class YPTQcAnalisiAcciaieriaPO extends PersistentObject implemen
 		setDirty();
 	}
 
-	public Float getAcFormula1Valore() {
+	public BigDecimal getAcFormula1Valore() {
 		return acFormula1Valore;
 	}
 
-	public void setAcFormula1Valore(Float acFormula1Valore) {
+	public void setAcFormula1Valore(BigDecimal acFormula1Valore) {
 		this.acFormula1Valore = acFormula1Valore;
 		setDirty();
 	}
@@ -621,11 +622,11 @@ public abstract class YPTQcAnalisiAcciaieriaPO extends PersistentObject implemen
 		setDirty();
 	}
 
-	public Float getAcFormula2Valore() {
+	public BigDecimal getAcFormula2Valore() {
 		return acFormula2Valore;
 	}
 
-	public void setAcFormula2Valore(Float acFormula2Valore) {
+	public void setAcFormula2Valore(BigDecimal acFormula2Valore) {
 		this.acFormula2Valore = acFormula2Valore;
 		setDirty();
 	}
@@ -639,11 +640,11 @@ public abstract class YPTQcAnalisiAcciaieriaPO extends PersistentObject implemen
 		setDirty();
 	}
 
-	public Float getAcFormula3Valore() {
+	public BigDecimal getAcFormula3Valore() {
 		return acFormula3Valore;
 	}
 
-	public void setAcFormula3Valore(Float acFormula3Valore) {
+	public void setAcFormula3Valore(BigDecimal acFormula3Valore) {
 		this.acFormula3Valore = acFormula3Valore;
 		setDirty();
 	}
@@ -657,11 +658,11 @@ public abstract class YPTQcAnalisiAcciaieriaPO extends PersistentObject implemen
 		setDirty();
 	}
 
-	public Float getAcFormula4Valore() {
+	public BigDecimal getAcFormula4Valore() {
 		return acFormula4Valore;
 	}
 
-	public void setAcFormula4Valore(Float acFormula4Valore) {
+	public void setAcFormula4Valore(BigDecimal acFormula4Valore) {
 		this.acFormula4Valore = acFormula4Valore;
 		setDirty();
 	}
@@ -675,11 +676,11 @@ public abstract class YPTQcAnalisiAcciaieriaPO extends PersistentObject implemen
 		setDirty();
 	}
 
-	public Float getAcFormula5Valore() {
+	public BigDecimal getAcFormula5Valore() {
 		return acFormula5Valore;
 	}
 
-	public void setAcFormula5Valore(Float acFormula5Valore) {
+	public void setAcFormula5Valore(BigDecimal acFormula5Valore) {
 		this.acFormula5Valore = acFormula5Valore;
 		setDirty();
 	}

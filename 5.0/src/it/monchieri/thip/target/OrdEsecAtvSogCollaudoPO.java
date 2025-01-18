@@ -51,6 +51,7 @@ public abstract class OrdEsecAtvSogCollaudoPO extends PersistentObject  implemen
 	protected String faseObbl;           // nchar(4000)
 	protected String cmtrWhitness;       // nchar(16)
 	protected String IdNumeroOrp;
+	protected String iNumeroOrdFmt;
 
 	@SuppressWarnings("rawtypes")
 	public static Vector retrieveList(String where, String orderBy, boolean optimistic)
@@ -231,6 +232,14 @@ public abstract class OrdEsecAtvSogCollaudoPO extends PersistentObject  implemen
 	public void setFaseObbl(String faseObbl) {
 		this.faseObbl = faseObbl;
 		setDirty();
+	}
+	
+	public String getNumeroOrdFmt() {
+		return iNumeroOrdFmt;
+	}
+
+	public void setNumeroOrdFmt(String iNumeroOrdFmt) {
+		this.iNumeroOrdFmt = iNumeroOrdFmt;
 	}
 
 	public String getCmtrWhitness() {

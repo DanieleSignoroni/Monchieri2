@@ -3,8 +3,8 @@ package it.monchieri.thip.target;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 
@@ -25,6 +25,16 @@ import com.thera.thermfw.persist.KeyHelper;
 
 public class OrdEsecAtvSogCollaudo extends OrdEsecAtvSogCollaudoPO {
 
+	protected List<NoteAttivitaSogCollaudo> iNoteTargetAttivitaCollaudo = null;
+
+	public List<NoteAttivitaSogCollaudo> getNoteTargetAttivitaCollaudo() {
+		return iNoteTargetAttivitaCollaudo;
+	}
+
+	public void setNoteTargetAttivitaCollaudo(List<NoteAttivitaSogCollaudo> iNoteTargetAttivitaCollaudo) {
+		this.iNoteTargetAttivitaCollaudo = iNoteTargetAttivitaCollaudo;
+	}
+
 	protected String iNote_C03_TT_QUALITA;
 	protected Map<Integer,String> descrizioniFase_C03_TT_QUALITA = null;
 
@@ -38,7 +48,6 @@ public class OrdEsecAtvSogCollaudo extends OrdEsecAtvSogCollaudoPO {
 	protected Map<Integer,String> descrizioneFase_C06_CONTORLLO_INTERMEDIO_1 = null;
 
 	protected String iNoteC02_FUCINATURA;
-	protected Map<Integer,String> descrizioneFase_C02_FUCINATURA = null;
 
 	protected Map<Integer,String> descrizioneFase_C06_CONTROLLI_NDT = null;
 	protected Map<Integer,String> descrizioneFase_C06_CONTROLLI_NDT_1 = null;
@@ -86,14 +95,6 @@ public class OrdEsecAtvSogCollaudo extends OrdEsecAtvSogCollaudoPO {
 
 	public void setDescrizioneFase_C06_CONTROLLI_NDT(Map<Integer, String> descrizioneFase_C06_CONTROLLI_NDT) {
 		this.descrizioneFase_C06_CONTROLLI_NDT = descrizioneFase_C06_CONTROLLI_NDT;
-	}
-
-	public Map<Integer, String> getDescrizioneFase_C02_FUCINATURA() {
-		return descrizioneFase_C02_FUCINATURA;
-	}
-
-	public void setDescrizioneFase_C02_FUCINATURA(Map<Integer, String> descrizioneFase_C02_FUCINATURA) {
-		this.descrizioneFase_C02_FUCINATURA = descrizioneFase_C02_FUCINATURA;
 	}
 
 	public Map<Integer, String> getDescrizioneFase_C06_CONTORLLO_INTERMEDIO_1() {
@@ -162,7 +163,7 @@ public class OrdEsecAtvSogCollaudo extends OrdEsecAtvSogCollaudoPO {
 	}
 
 	protected Map<String, OrdEsecAtvSogCollaudoDatiCaratteristica> caratteristiche = new HashMap<String, OrdEsecAtvSogCollaudoDatiCaratteristica>();
-	
+
 	public Map<String, OrdEsecAtvSogCollaudoDatiCaratteristica> getCaratteristiche() {
 		return caratteristiche;
 	}
@@ -170,7 +171,7 @@ public class OrdEsecAtvSogCollaudo extends OrdEsecAtvSogCollaudoPO {
 	public void setCaratteristiche(Map<String, OrdEsecAtvSogCollaudoDatiCaratteristica> caratteristiche) {
 		this.caratteristiche = caratteristiche;
 	}
-	
+
 	protected String iRiferimentoProceduraTtQualita = null;
 	public String getRiferimentoProceduraTtQualita() {
 		return iRiferimentoProceduraTtQualita;
@@ -178,7 +179,7 @@ public class OrdEsecAtvSogCollaudo extends OrdEsecAtvSogCollaudoPO {
 	public void setRiferimentoProceduraTtQualita(String iRiferimentoProceduraTtQualita) {
 		this.iRiferimentoProceduraTtQualita = iRiferimentoProceduraTtQualita;
 	}
-	
+
 	protected Map<String, String> noteFaseTtQualita = new HashMap<String, String>();
 	public Map<String, String> getNoteFaseTtQualita() {
 		return noteFaseTtQualita;
@@ -187,7 +188,7 @@ public class OrdEsecAtvSogCollaudo extends OrdEsecAtvSogCollaudoPO {
 	public void setNoteFaseTtQualita(Map<String, String> noteFaseTtQualita) {
 		this.noteFaseTtQualita = noteFaseTtQualita;
 	}
-	
+
 	protected String iRiferimentoProceduraControlloGrezzoPostForgia = null;
 	public String getRiferimentoProceduraControlloGrezzoPostForgia() {
 		return iRiferimentoProceduraControlloGrezzoPostForgia;
@@ -196,7 +197,7 @@ public class OrdEsecAtvSogCollaudo extends OrdEsecAtvSogCollaudoPO {
 	public void setRiferimentoProceduraControlloGrezzoPostForgia(String iRiferimentoProceduraControlloGrezzoPostForgia) {
 		this.iRiferimentoProceduraControlloGrezzoPostForgia = iRiferimentoProceduraControlloGrezzoPostForgia;
 	}
-	
+
 	protected String iRiferimentoProceduraControlloQualitativoPost = null;
 	protected Map<String, String> noteFaseControlloQualitativoPost = new HashMap<String, String>();
 	public String getRiferimentoProceduraControlloQualitativoPost() {
@@ -213,7 +214,7 @@ public class OrdEsecAtvSogCollaudo extends OrdEsecAtvSogCollaudoPO {
 	public void setNoteFaseControlloQualitativoPost(Map<String, String> noteFaseControlloQualitativoPost) {
 		this.noteFaseControlloQualitativoPost = noteFaseControlloQualitativoPost;
 	}
-	
+
 	protected String iRiferimentoProeduraTtRicottura = null;
 	public String getRiferimentoProeduraTtRicottura() {
 		return iRiferimentoProeduraTtRicottura;
@@ -222,7 +223,7 @@ public class OrdEsecAtvSogCollaudo extends OrdEsecAtvSogCollaudoPO {
 	public void setRiferimentoProeduraTtRicottura(String iRiferimentoProeduraTtRicottura) {
 		this.iRiferimentoProeduraTtRicottura = iRiferimentoProeduraTtRicottura;
 	}
-	
+
 	protected Map<String, String> noteFaseControlloTtPreliminare = new HashMap<String, String>();
 	public Map<String, String> getNoteFaseControlloTtPreliminare() {
 		return noteFaseControlloTtPreliminare;
@@ -231,7 +232,7 @@ public class OrdEsecAtvSogCollaudo extends OrdEsecAtvSogCollaudoPO {
 	public void setNoteFaseControlloTtPreliminare(Map<String, String> noteFaseControlloTtPreliminare) {
 		this.noteFaseControlloTtPreliminare = noteFaseControlloTtPreliminare;
 	}
-	
+
 	protected String riferimentoProcedutaTtSupplementare = null;
 	protected Map<String, String> noteFaseControlloTtSupplementare = new HashMap<String, String>();
 	public String getRiferimentoProcedutaTtSupplementare() {
@@ -248,7 +249,7 @@ public class OrdEsecAtvSogCollaudo extends OrdEsecAtvSogCollaudoPO {
 	public void setNoteFaseControlloTtSupplementare(Map<String, String> noteFaseControlloTtSupplementare) {
 		this.noteFaseControlloTtSupplementare = noteFaseControlloTtSupplementare;
 	}
-	
+
 	protected String riferimentoProceduraUtPreTT = null;
 	public String getRiferimentoProceduraUtPreTT() {
 		return riferimentoProceduraUtPreTT;
@@ -266,7 +267,7 @@ public class OrdEsecAtvSogCollaudo extends OrdEsecAtvSogCollaudoPO {
 	public void setNoteFaseControlloNDT(Map<String, String> noteFaseControlloNDT) {
 		this.noteFaseControlloNDT = noteFaseControlloNDT;
 	}
-	
+
 	protected String iRiferimentoProceduraControlloDurezzeDimensionali = null;
 	public String getRiferimentoProceduraControlloDurezzeDimensionali() {
 		return iRiferimentoProceduraControlloDurezzeDimensionali;
@@ -276,7 +277,7 @@ public class OrdEsecAtvSogCollaudo extends OrdEsecAtvSogCollaudoPO {
 			String iRiferimentoProceduraControlloDurezzeDimensionali) {
 		this.iRiferimentoProceduraControlloDurezzeDimensionali = iRiferimentoProceduraControlloDurezzeDimensionali;
 	}
-	
+
 	protected String iRiferimentoProceduraControlloIntermedio = null;
 	public String getRiferimentoProceduraControlloIntermedio() {
 		return iRiferimentoProceduraControlloIntermedio;
@@ -289,14 +290,6 @@ public class OrdEsecAtvSogCollaudo extends OrdEsecAtvSogCollaudoPO {
 	@Override
 	public ErrorMessage checkDelete() {
 		return null;
-	}
-
-	@SuppressWarnings("unchecked")
-	public static List<OrdEsecAtvSogCollaudo> listaCicliControlloDaImportare() throws ClassNotFoundException, InstantiationException, IllegalAccessException, SQLException{
-		List<OrdEsecAtvSogCollaudo> list = new ArrayList<OrdEsecAtvSogCollaudo>();
-		String where = ""+OrdEsecAtvSogCollaudoTM.ID_PROGRESSIVO+" IS NULL AND R_COMMESSA = 'A9071001' ";
-		list = retrieveList(where, "", false);
-		return list;
 	}
 
 	public void recuperaNote_C03_TT_PRELIMINARE(){
@@ -1114,59 +1107,6 @@ public class OrdEsecAtvSogCollaudo extends OrdEsecAtvSogCollaudoPO {
 		}
 	}
 
-	public void leggiNote_C02_FUCINATURA() {
-		descrizioneFase_C02_FUCINATURA = new HashMap<Integer, String>();
-		String stmt = "SELECT "
-				+ "	(oea.ID_SEQUENZA_FASE - 1) + qc.ID_SEQUENZA as ID_SEQUENZA_FASE, "
-				+ "	CAST('it' AS nchar(2)) AS LANGUAGE, "
-				+ "	CAST('CM_SGQ_CICLI_FAS' AS nchar(18)) AS TABLE_NAME, "
-				+ "	CAST(oea.ORP_EFF_DOC_ID AS nvarchar(35)) AS DESCRIPTION, "
-				+ "	CAST(qc.NC_NOTE_FUCINATURA AS nvarchar(1000)) AS NLS_COMMENT_TEXT, "
-				+ "	CAST('N' AS nchar(1)) AS RESERVED, "
-				+ "	CAST('0' AS nchar(1)) AS TEXT_TYPE, "
-				+ "	NULL AS COMM_TYPE1_ID, "
-				+ "	NULL AS COMM_TYPE2_ID, "
-				+ "	CAST('SGQ_CICLI_FAS' AS nchar(15)) AS R_COMMENT_USE "
-				+ "FROM "
-				+ "	PantheraTarget.THIPPERS.ORD_ESEC_ATV_SOG_COLLAUDO_ORP_20 oea "
-				+ "INNER JOIN ( "
-				+ "	SELECT "
-				+ "		1 AS ID_SEQUENZA, "
-				+ "			QC_FUC_RIC_RIL.ORD_CLI_RIGA, "
-				+ "			QC_FUC_RIC_RIL.ORP_EFF_DOC_ID, "
-				+ "			QC_FUC_RIC_RIL.NC_NOTE_FUCINATURA "
-				+ "	FROM "
-				+ "		[Target].[dbo].[QC_FUC_RIC_RIL] "
-				+ "	WHERE "
-				+ "		COALESCE(QC_FUC_RIC_RIL.NC_NOTE_FUCINATURA, "
-				+ "		'') <> '') qc ON "
-				+ "	qc.ORD_CLI_RIGA = oea.ORD_CLI_RIGA COLLATE Latin1_General_CS_AS "
-				+ "	AND qc.ORP_EFF_DOC_ID = oea.ORP_EFF_DOC_ID COLLATE Latin1_General_CS_AS "
-				+ " WHERE "
-				+ "	oea.NOME_TABELLA = 'C02_FUCINATURA' AND oea.R_COMMESSA = '"+getCommessa()+"' AND oea.ORD_CLI_RIGA = '"+getOrdCliRiga()+"' ";
-		ResultSet rs = null;
-		CachedStatement cs = new CachedStatement(stmt);
-		try {
-			rs = cs.executeQuery();
-			while(rs.next()) {
-				descrizioneFase_C02_FUCINATURA.put(rs.getInt("ID_SEQUENZA_FASE"), rs.getString("NLS_COMMENT_TEXT"));
-			}
-		} catch (SQLException e) {
-			e.printStackTrace(Trace.excStream);
-		}finally {
-			try {
-				if(rs != null) {
-					rs.close();
-				}
-				if(cs != null) {
-					cs.free();
-				}
-			} catch (SQLException e) {
-				e.printStackTrace(Trace.excStream);
-			}
-		}
-	}
-
 	public void leggiNote_C06_CONTROLLI_NDT() {
 		descrizioneFase_C06_CONTROLLI_NDT = new HashMap<Integer, String>();
 		String stmt = "SELECT "
@@ -1669,7 +1609,7 @@ public class OrdEsecAtvSogCollaudo extends OrdEsecAtvSogCollaudoPO {
 			}
 		}
 	}
-	
+
 	public void leggiRiferimentoProceduraTtQualita() {
 		String stmt = "SELECT "
 				+ "	CAST(qc.SPECIFICA_1 AS nchar(35)) AS RIF_PROCEDURA, "
@@ -1707,7 +1647,7 @@ public class OrdEsecAtvSogCollaudo extends OrdEsecAtvSogCollaudoPO {
 			}
 		}
 	}
-	
+
 	public void leggiRiferimentoProceduraControlloQualitativoPost() {
 		String stmt = "SELECT "
 				+ "	CAST(qc.SPECIFICA_1 AS nchar(35)) AS RIF_PROCEDURA, "
@@ -1744,7 +1684,7 @@ public class OrdEsecAtvSogCollaudo extends OrdEsecAtvSogCollaudoPO {
 			}
 		}
 	}
-	
+
 	public void leggiRiferimentoProceduraControlloGrezzoPostForgia() {
 		String stmt = "SELECT "
 				+ "	CAST(qc.CMTR_SPECIFICA AS nchar(35)) AS RIF_PROCEDURA, "
@@ -1778,7 +1718,7 @@ public class OrdEsecAtvSogCollaudo extends OrdEsecAtvSogCollaudoPO {
 			}
 		}
 	}
-	
+
 	public void leggiRiferimentoProceduraTtRicottura() {
 		String stmt = "SELECT "
 				+ "	CAST(qc.CMTR_SPECIFICA AS nchar(35)) AS RIF_PROCEDURA, "
@@ -1812,7 +1752,7 @@ public class OrdEsecAtvSogCollaudo extends OrdEsecAtvSogCollaudoPO {
 			}
 		}
 	}
-	
+
 	public void leggiRiferimentoProcedutaTtSupplementare() {
 		String stmt = "SELECT "
 				+ "	CAST(qc.SPECIFICA_1 AS nchar(35)) AS RIF_PROCEDURA, "
@@ -1846,7 +1786,7 @@ public class OrdEsecAtvSogCollaudo extends OrdEsecAtvSogCollaudoPO {
 			}
 		}
 	}
-	
+
 	public void leggiRiferimentoProcedutaUtPreTT() {
 		String stmt = "SELECT "
 				+ "	CAST(qc.CMTR_SPECIFICA AS nchar(35)) AS RIF_PROCEDURA, "
@@ -1883,7 +1823,7 @@ public class OrdEsecAtvSogCollaudo extends OrdEsecAtvSogCollaudoPO {
 			}
 		}
 	}
-	
+
 	public void leggiRiferimentoProcedutaControlloIntermedio() {
 		String stmt = "SELECT "
 				+ "	CAST(RIF_PROCEDURA AS nchar(35)) AS RIF_PROCEDURA, "
@@ -1927,7 +1867,7 @@ public class OrdEsecAtvSogCollaudo extends OrdEsecAtvSogCollaudoPO {
 			}
 		}
 	}
-	
+
 	public void leggiRiferimentoProcedutaControlloDurezzeDimensionali() {
 		String stmt = "SELECT "
 				+ "	CAST(RIF_PROCEDURA AS nchar(35)) AS RIF_PROCEDURA, "
@@ -1971,7 +1911,7 @@ public class OrdEsecAtvSogCollaudo extends OrdEsecAtvSogCollaudoPO {
 			}
 		}
 	}
-	
+
 	public void leggiNoteFaseTtQualita() {
 		String stmt = "SELECT "
 				+ "	(oea.ID_SEQUENZA_FASE - 1) + c.ID_SEQUENZA AS ID_SEQUENZA_FASE, "
@@ -2157,7 +2097,7 @@ public class OrdEsecAtvSogCollaudo extends OrdEsecAtvSogCollaudoPO {
 			}
 		}
 	}
-	
+
 	public void leggiNoteFaseControlloQualitativoPost() {
 		String stmt = "SELECT "
 				+ "	(oea.ID_SEQUENZA_FASE - 1) + c.ID_SEQUENZA AS ID_SEQUENZA_FASE, "
@@ -2321,7 +2261,7 @@ public class OrdEsecAtvSogCollaudo extends OrdEsecAtvSogCollaudoPO {
 			}
 		}
 	}
-	
+
 	public void leggiNoteFaseControlloTtPreliminare() {
 		String stmt = "SELECT "
 				+ "	(oea.ID_SEQUENZA_FASE - 1) + c.ID_SEQUENZA AS ID_SEQUENZA_FASE, "
@@ -2503,7 +2443,7 @@ public class OrdEsecAtvSogCollaudo extends OrdEsecAtvSogCollaudoPO {
 			}
 		}
 	}
-	
+
 	public void leggiNoteFaseControlloTtSupplementare() {
 		String stmt = "SELECT "
 				+ "	CAST('SGQ_CICLI_FMO' AS nchar(20)) AS DATA_ORIGIN, "
@@ -2925,6 +2865,18 @@ public class OrdEsecAtvSogCollaudo extends OrdEsecAtvSogCollaudoPO {
 				e.printStackTrace(Trace.excStream);
 			}
 		}
+	}
+
+	@SuppressWarnings("rawtypes")
+	public NoteAttivitaSogCollaudo commentoAttivita(Integer idSequenzaFase, Integer seqVisualizz) {
+		NoteAttivitaSogCollaudo nota = null;
+		for (Iterator iterator = getNoteTargetAttivitaCollaudo().iterator(); iterator.hasNext();) {
+			NoteAttivitaSogCollaudo noteAttivitaSogCollaudo = (NoteAttivitaSogCollaudo) iterator.next();
+			if(noteAttivitaSogCollaudo.getIdSequenzaFase().compareTo(idSequenzaFase) == 0 && noteAttivitaSogCollaudo.getSeqVisualizz().compareTo(seqVisualizz) == 0) {
+				nota = noteAttivitaSogCollaudo;
+			}
+		}
+		return nota;
 	}
 
 

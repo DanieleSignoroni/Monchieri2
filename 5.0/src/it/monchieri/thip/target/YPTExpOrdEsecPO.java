@@ -3,6 +3,7 @@ package it.monchieri.thip.target;
 import java.math.BigDecimal;
 import java.sql.Date; // Using java.sql.Date as requested
 import java.sql.SQLException;
+import java.sql.Timestamp;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Vector;
@@ -54,7 +55,7 @@ public abstract class YPTExpOrdEsecPO extends PersistentObject implements Busine
 	protected String utenteIns;
 	protected Date dataIns;
 	protected String utenteMod;
-	protected Date dataMod;
+	protected Timestamp dataMod;
 	protected BigDecimal pesgrez;
 	protected BigDecimal pesmult;
 	protected String chiodaia;
@@ -260,10 +261,10 @@ public abstract class YPTExpOrdEsecPO extends PersistentObject implements Busine
 		setDirty();
 	}
 
-	public Date getDataMod() {
+	public Timestamp getDataMod() {
 		return dataMod;
 	}
-	public void setDataMod(Date dataMod) {
+	public void setDataMod(Timestamp dataMod) {
 		this.dataMod = dataMod;
 		setDirty();
 	}

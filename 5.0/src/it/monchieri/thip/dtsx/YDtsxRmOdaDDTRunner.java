@@ -1,6 +1,7 @@
 package it.monchieri.thip.dtsx;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -46,6 +47,7 @@ import it.thera.thip.acquisti.ordineAC.OrdineAcquistoRigaLottoPrm;
 import it.thera.thip.acquisti.ordineAC.OrdineAcquistoRigaPrm;
 import it.thera.thip.base.azienda.Azienda;
 import it.thera.thip.base.dipendente.Dipendente;
+import it.thera.thip.base.fornitore.Fornitore;
 import it.thera.thip.magazzino.generalemag.Lotto;
 import it.thera.thip.qualita.controllo.CicloCollaudoCaratteristica;
 import it.thera.thip.qualita.controllo.CicloCollaudoTestata;
@@ -68,7 +70,7 @@ import it.thera.thip.qualita.controllo.MisuraFase;
 
 public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 
-	public static final String NOME_DB_EXT = "PantheraTarget";
+	public static final String NOME_DB_EXT = "PantheraTarget_test";
 	public static final String UTENTE_DB_EXT = "Panthera";
 	public static final String PWD_DB_EXT = "panthera";
 	public static final String SRV_DB_EXT = "SRVDB.fmonchieri.locale";
@@ -249,10 +251,11 @@ public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 			setDataEstrazioneOrdFor(null);
 		}
 		try {
-			int rc = esportazioneAnalisiChimicheTarget();
+//			int rc = esportazioneAnalisiChimicheTarget();
 //			rc += esportazioneOrdFor();
 //			rc += esportazioneOrdDdt();
-//			rc += esportazioneAnalisiAcciaieriaTarget();
+			int rc = 0;
+			rc += esportazioneAnalisiAcciaieriaTarget();
 			if(rc < ErrorCodes.OK) {
 				return false;
 			}
@@ -448,39 +451,42 @@ public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 		List analisiChimiche = estrazioneAnalisiQcRm(timestamp);
 		output.println("  Estratte "+analisiChimiche.size()+" "+YNormeQualitaTM.TABLE_NAME+" ");
 		output.println("  Esportazione "+YPTQcAnalisiRmTM.TABLE_NAME+" verso Target ");
-		int rc = esportaOggettiVersoTarget(analisiChimiche);
-		if(rc == ErrorCodes.OK) {
-			elabAnalisiQcRm.setDirty(true);
-			if(elabAnalisiQcRm.save() > 0) {
-				ConnectionManager.commit();
-			}
-
-			ConnectionDescriptor cnd = YDtsxPtExpOrdEsecRunner.externalConnectionDescriptor(
-					NOME_DB_EXT,
-					UTENTE_DB_EXT,
-					PWD_DB_EXT, 
-					SRV_DB_EXT, 
-					PORTA_DB_EXT);
-			try {
-				if(cnd != null) {
-					ConnectionManager.pushConnection(cnd);
-					riattiva_QC_ANALISI_RM(cnd);
-					riattiva_QC_ANALISI_RM_2(cnd);
-					YPT_QC_ANALISI_RM_set_Elaborato_To_X(cnd);
+		int rc = ErrorCodes.NO_ROWS_FOUND;
+		if(analisiChimiche.size() > 0) {
+			rc = esportaOggettiVersoTarget(analisiChimiche);
+			if(rc >= ErrorCodes.OK) {
+				elabAnalisiQcRm.setDirty(true);
+				if(elabAnalisiQcRm.save() > 0) {
+					ConnectionManager.commit();
 				}
-			} catch (Throwable ex) {
-				ex.printStackTrace(Trace.excStream);
-			} finally {
-				if (cnd != null) {
-					cnd.closeConnection();
-					ConnectionManager.popConnection(cnd);
-				}
-			}
 
+				ConnectionDescriptor cnd = YDtsxPtExpOrdEsecRunner.externalConnectionDescriptor(
+						NOME_DB_EXT,
+						UTENTE_DB_EXT,
+						PWD_DB_EXT, 
+						SRV_DB_EXT, 
+						PORTA_DB_EXT);
+				try {
+					if(cnd != null) {
+						ConnectionManager.pushConnection(cnd);
+						riattiva_QC_ANALISI_RM(cnd);
+						riattiva_QC_ANALISI_RM_2(cnd);
+						YPT_QC_ANALISI_RM_set_Elaborato_To_X(cnd);
+					}
+				} catch (Throwable ex) {
+					ex.printStackTrace(Trace.excStream);
+				} finally {
+					if (cnd != null) {
+						cnd.closeConnection();
+						ConnectionManager.popConnection(cnd);
+					}
+				}
+
+			}
+			output.println("  Esportazione verso "+YPTQcAnalisiRmTM.TABLE_NAME+" avvenuta con "+(rc > 0 ? "successo" : "errori"));
+			output.println(" ----------------- Fine estrazione "+YPTQcAnalisiRmTM.TABLE_NAME+" -------------------- ");
+			output.println();
 		}
-		output.println("  Esportazione verso "+YPTQcAnalisiRmTM.TABLE_NAME+" avvenuta con "+(rc > 0 ? "successo" : "errori"));
-		output.println(" ----------------- Fine estrazione "+YPTQcAnalisiRmTM.TABLE_NAME+" -------------------- ");
-		output.println();
 		return rc;
 	}
 
@@ -647,11 +653,13 @@ public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 					String DOC_REV_PREP = "";
 					if(norma.getIdDipendAprv() != null) {
 						Dipendente dipendenteApprovazione = getDipendente(norma.getIdDipendAprv());
-						DOC_REV_APPR = dipendenteApprovazione.getCognome() + " " + dipendenteApprovazione.getNome();
+						if(dipendenteApprovazione != null)
+							DOC_REV_APPR = dipendenteApprovazione.getCognome() + " " + dipendenteApprovazione.getNome();
 					}
 					if(norma.getIdDipendCrz() != null) {
 						Dipendente dipendentePreparazione = getDipendente(norma.getIdDipendCrz());
-						DOC_REV_PREP = dipendentePreparazione.getCognome() + " " + dipendentePreparazione.getNome();
+						if(dipendentePreparazione != null)
+							DOC_REV_PREP = dipendentePreparazione.getCognome() + " " + dipendentePreparazione.getNome();
 					}
 					String ID = norma.getIdNorma(); //first key part
 					String NOTE = norma.getNote1();
@@ -1341,7 +1349,6 @@ public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 				}
 			}
 		}
-
 		return list;
 	}
 
@@ -1353,9 +1360,7 @@ public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 
 			for (DocumentoCollaudoTestata collaudo : collaudi) {
 				try {
-					String keyRigaOrdAcq = KeyHelper.buildObjectKey(new String[] {
-							collaudo.getIdAzienda(),collaudo.getIdAnnoOrdine(),collaudo.getIdNumeroOrd(),collaudo.getNumeroRigaOrdineAcq().toString()
-					});
+					String keyRigaOrdAcq = collaudo.getOrdineAcquisto().getKey();
 					YOrdineAcquistoRigaPrm rigaOrdAcq = (YOrdineAcquistoRigaPrm) YOrdineAcquistoRigaPrm.elementWithKey(YOrdineAcquistoRigaPrm.class, keyRigaOrdAcq, PersistentObject.NO_LOCK);
 					if(rigaOrdAcq != null) {
 						YNormeQualita norma = rigaOrdAcq.getNormaqualita();
@@ -1367,8 +1372,23 @@ public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 								Date DATA = lotto.getDataDocAcq();
 								String COLATA = lotto.getLottoAcquisto();
 								String ACCIAIERIA = "";
-								if(lotto.getFornitore() != null) {
-									ACCIAIERIA = lotto.getFornitore().getRagioneSociale();
+								if(lotto.getCodiceFornitore() != null) {
+									if (lotto.getCodiceFornitore() != null) {
+										Object[] keyParts = {Azienda.getAziendaCorrente(), lotto.getCodiceFornitore()};
+										String key = KeyHelper.buildObjectKey(keyParts);
+										Fornitore fornitore = (Fornitore) Factory.createObject(Fornitore.class);
+										fornitore.setKey(key);
+										fornitore.setDeepRetrieveEnabled(true);
+										try {
+											fornitore.retrieve();
+											if (fornitore != null) {
+												ACCIAIERIA = fornitore.getRagioneSociale();
+											}
+										}
+										catch (SQLException ex) {
+											ex.printStackTrace();
+										}
+									}
 								}
 								String ID = adaptProgressivo(ciclo.getProgressivo());
 								String ACCIAIO = norma.getDscAcciaio();
@@ -1378,58 +1398,58 @@ public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 								String TIPO_TRAT = "";
 								String NOTE = "";
 								Timestamp TIMESTAMP_AGG = collaudo.getDatiComuni().getTimestampAgg();
-								Float AL = 0.f;
-								Float ALSOI= 0.f;
-								Float AS_= 0.f;
-								Float B= 0.f;
-								Float BI= 0.f;
-								Float CA= 0.f;
-								Float CB= 0.f;
-								Float CE= 0.f;
-								Float CO= 0.f;
-								Float CR= 0.f;
-								Float CR_EQ= 0.f;
-								Float CU= 0.f;
+								BigDecimal AL = null;
+								BigDecimal ALSOI= null;
+								BigDecimal AS_= null;
+								BigDecimal B= null;
+								BigDecimal BI= null;
+								BigDecimal CA= null;
+								BigDecimal CB= null;
+								BigDecimal CE= null;
+								BigDecimal CO= null;
+								BigDecimal CR= null;
+								BigDecimal CR_EQ= null;
+								BigDecimal CU= null;
 								Integer H_PPM_O_PERC= 0;
-								Float JF= 0.f;
-								Float MN= 0.f;
-								Float MO= 0.f;
+								BigDecimal JF= null;
+								BigDecimal MN= null;
+								BigDecimal MO= null;
 								Integer N_PPM_O_PERC= 0;
-								Float NB= 0.f;
-								Float NI= 0.f;
+								BigDecimal NB= null;
+								BigDecimal NI= null;
 								Integer O_PPM_O_PERC= 0;
-								Float P= 0.f;
-								Float PB= 0.f;
-								Float PCM= 0.f;
-								Float PRE= 0.f;
-								Float S= 0.f;
-								Float SB= 0.f;
-								Float SI= 0.f;
-								Float SN= 0.f;
-								Float TA= 0.f;
-								Float TI= 0.f;
-								Float V= 0.f;
-								Float C= 0.f;
-								Float W= 0.f;
-								Float XF= 0.f;
-								Float ZR= 0.f;
-								Float C_N= 0.f;
-								Float FE= 0.f;
-								Float NB_TA= 0.f;
-								Float Y= 0.f;
-								Float H= 0.f;
-								Float N= 0.f;
-								Float O= 0.f;
+								BigDecimal P= null;
+								BigDecimal PB= null;
+								BigDecimal PCM= null;
+								BigDecimal PRE= null;
+								BigDecimal S= null;
+								BigDecimal SB= null;
+								BigDecimal SI= null;
+								BigDecimal SN= null;
+								BigDecimal TA= null;
+								BigDecimal TI= null;
+								BigDecimal V= null;
+								BigDecimal C= null;
+								BigDecimal W= null;
+								BigDecimal XF= null;
+								BigDecimal ZR= null;
+								BigDecimal C_N= null;
+								BigDecimal FE= null;
+								BigDecimal NB_TA= null;
+								BigDecimal Y= null;
+								BigDecimal H= null;
+								BigDecimal N= null;
+								BigDecimal O= null;
 								String AC_FORMULA_1 = null;
-								Float AC_FORMULA_1_VALORE= 0.f;
+								BigDecimal AC_FORMULA_1_VALORE= null;
 								String AC_FORMULA_2= null;
-								Float AC_FORMULA_2_VALORE= 0.f;
+								BigDecimal AC_FORMULA_2_VALORE= null;
 								String AC_FORMULA_3= null;
-								Float AC_FORMULA_3_VALORE= 0.f;
+								BigDecimal AC_FORMULA_3_VALORE= null;
 								String AC_FORMULA_4= null;
-								Float AC_FORMULA_4_VALORE= 0.f;
+								BigDecimal AC_FORMULA_4_VALORE= null;
 								String AC_FORMULA_5= null;
-								Float AC_FORMULA_5_VALORE= 0.f;
+								BigDecimal AC_FORMULA_5_VALORE= null;
 
 								if(collaudo.getRighe().size() > 0) {
 									DocumentoCollaudoRiga riga = (DocumentoCollaudoRiga) collaudo.getRighe().get(0);
@@ -1439,55 +1459,62 @@ public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 
 									while(iterCarat.hasNext()) {
 										YMisuraCaracteriche misuraCaratterisitca = (YMisuraCaracteriche) iterCarat.next(); //la caratteristica, tipo carbonio, manganese
-										String carattKey = KeyHelper.buildObjectKey(new String[] {KeyHelper.getTokenObjectKey(getKey(), 1), ciclo.getProgressivo(), KeyHelper.getTokenObjectKey(getKey(), 7), KeyHelper.getTokenObjectKey(getKey(), 8)});
+										String carattKey = KeyHelper.buildObjectKey(new String[] {
+												KeyHelper.getTokenObjectKey(misuraCaratterisitca.getKey(), 1),
+												ciclo.getProgressivo(), 
+												KeyHelper.getTokenObjectKey(misuraCaratterisitca.getKey(), 7),
+												KeyHelper.getTokenObjectKey(misuraCaratterisitca.getKey(), 8)});
 
 										//Questa e' a parita di sequenza la corrispondente caratteristica dell'anagrafica ciclo, mi serve per prendere la descrizione ridotta
 										CicloCollaudoCaratteristica cicloCarratteristica = CicloCollaudoCaratteristica.elementWithKey(carattKey, PersistentObject.NO_LOCK);
 										if(cicloCarratteristica != null) {
 											String descrizioneRidotta = cicloCarratteristica.getDescrizioneCicloNLS().getDescrizioneRidotta();
 											DocumentiCollaudoRilevazioneMisure rilevazione = (DocumentiCollaudoRilevazioneMisure) misuraCaratterisitca.getMisura().get(0);
+											BigDecimal valoreRilevato = rilevazione.getValoreRilevato();
+											if(valoreRilevato == null) {
+												valoreRilevato = BigDecimal.ZERO;
+											}else {
+												valoreRilevato = valoreRilevato.setScale(4, RoundingMode.DOWN);
+											}
 											switch (descrizioneRidotta) {
 											case "Al":
-												AL = rilevazione.getValoreRilevato().floatValue();
+												AL = valoreRilevato;
 												break;
 											case "Al Sol":
-												ALSOI = rilevazione.getValoreRilevato().floatValue();
+												ALSOI = valoreRilevato;
 												break;
 											case "As":
-												AS_ = rilevazione.getValoreRilevato().floatValue();
+												AS_ = valoreRilevato;
 												break;
 											case "B":
-												B = rilevazione.getValoreRilevato().floatValue();
+												B = valoreRilevato;
 												break;
 											case "Bi":
-												BI = rilevazione.getValoreRilevato().floatValue();
+												BI = valoreRilevato;
 												break;
 											case "C":
-												C = rilevazione.getValoreRilevato().floatValue();
+												C = valoreRilevato;
 												break;
 											case "Ca":
-												CA = rilevazione.getValoreRilevato().floatValue();
-												break;
-											case "Cb":
-												CB = rilevazione.getValoreRilevato().floatValue();
+												CA = valoreRilevato;
 												break;
 											case "Ceq":
-												CE = rilevazione.getValoreRilevato().floatValue();
+												CE = valoreRilevato;
 												break;
 											case "Co":
-												CO = rilevazione.getValoreRilevato().floatValue();
+												CO = valoreRilevato;
 												break;
 											case "Cr":
-												CR = rilevazione.getValoreRilevato().floatValue();
+												CR = valoreRilevato;
 												break;
 											case "Creq":
-												CR_EQ = rilevazione.getValoreRilevato().floatValue();
+												CR_EQ = valoreRilevato;
 												break;
 											case "Cu":
-												CU = rilevazione.getValoreRilevato().floatValue();
+												CU = valoreRilevato;
 												break;
 											case "H":
-												H = rilevazione.getValoreRilevato().floatValue();
+												H = valoreRilevato;
 												if(misuraCaratterisitca.getIdUnitaMisura().equals("P%")) {
 													H_PPM_O_PERC = 1;
 												}else {
@@ -1495,16 +1522,16 @@ public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 												}
 												break;
 											case "J Fact":
-												JF = rilevazione.getValoreRilevato().floatValue();
+												JF = valoreRilevato;
 												break;
 											case "Mn":
-												MN = rilevazione.getValoreRilevato().floatValue();
+												MN = valoreRilevato;
 												break;
 											case "Mo":
-												MO = rilevazione.getValoreRilevato().floatValue();
+												MO = valoreRilevato;
 												break;
 											case "N":
-												N = rilevazione.getValoreRilevato().floatValue();
+												N = valoreRilevato;
 												if(misuraCaratterisitca.getIdUnitaMisura().equals("P%")) {
 													N_PPM_O_PERC = 1;
 												}else {
@@ -1512,89 +1539,89 @@ public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 												}
 												break;
 											case "Nb":
-												NB = rilevazione.getValoreRilevato().floatValue();
+												NB = valoreRilevato;
 												break;
 											case "Ni":
-												NI = rilevazione.getValoreRilevato().floatValue();
+												NI = valoreRilevato;
 												break;
 											case "O":
-												O = rilevazione.getValoreRilevato().floatValue();
+												O = valoreRilevato;
 												break;
 											case "P":
-												P = rilevazione.getValoreRilevato().floatValue();
+												P = valoreRilevato;
 												break;
 											case "Pb":
-												PB = rilevazione.getValoreRilevato().floatValue();
+												PB = valoreRilevato;
 												break;
 											case "PCM":
-												PCM = rilevazione.getValoreRilevato().floatValue();
+												PCM = valoreRilevato;
 												break;
 											case "Pre":
-												PRE = rilevazione.getValoreRilevato().floatValue();
+												PRE = valoreRilevato;
 												break;
 											case "S":
-												S = rilevazione.getValoreRilevato().floatValue();
+												S = valoreRilevato;
 												break;
 											case "Sb":
-												SB = rilevazione.getValoreRilevato().floatValue();
+												SB = valoreRilevato;
 												break;
 											case "Si":
-												SI = rilevazione.getValoreRilevato().floatValue();
+												SI = valoreRilevato;
 												break;
 											case "Sn":
-												SN = rilevazione.getValoreRilevato().floatValue();
+												SN = valoreRilevato;
 												break;
 											case "Ta":
-												TA = rilevazione.getValoreRilevato().floatValue();
+												TA = valoreRilevato;
 												break;
 											case "Ti":
-												TI = rilevazione.getValoreRilevato().floatValue();
+												TI = valoreRilevato;
 												break;
 											case "V":
-												V = rilevazione.getValoreRilevato().floatValue();
+												V = valoreRilevato;
 												break;
 											case "W":
-												W = rilevazione.getValoreRilevato().floatValue();
+												W = valoreRilevato;
 												break;
 											case "X Fact":
-												XF = rilevazione.getValoreRilevato().floatValue();
+												XF = valoreRilevato;
 												break;
 											case "Zr":
-												ZR = rilevazione.getValoreRilevato().floatValue();
+												ZR = valoreRilevato;
 												break;
 											case "C + N":
-												C_N = rilevazione.getValoreRilevato().floatValue();
+												C_N = valoreRilevato;
 												break;
 											case "Fe":
-												FE = rilevazione.getValoreRilevato().floatValue();
+												FE = valoreRilevato;
 												break;
 											case "Nb + Ta":
-												NB_TA= rilevazione.getValoreRilevato().floatValue();
+												NB_TA= valoreRilevato;
 												break;
 											case "Y":
-												Y = rilevazione.getValoreRilevato().floatValue();
+												Y = valoreRilevato;
 												break;
 											default:
 												if(misuraCaratterisitca.getYFormula() != null &&  !misuraCaratterisitca.getYFormula().isEmpty()) {
 													if(AC_FORMULA_1 == null) {
 														AC_FORMULA_1 = misuraCaratterisitca.getYFormula();
-														AC_FORMULA_1_VALORE = rilevazione.getValoreRilevato().floatValue();
+														AC_FORMULA_1_VALORE = valoreRilevato;
 													}
 													if(AC_FORMULA_2 == null) {
 														AC_FORMULA_2 = misuraCaratterisitca.getYFormula();
-														AC_FORMULA_2_VALORE = rilevazione.getValoreRilevato().floatValue();
+														AC_FORMULA_2_VALORE = valoreRilevato;
 													}
 													if(AC_FORMULA_3 == null) {
 														AC_FORMULA_3 = misuraCaratterisitca.getYFormula();
-														AC_FORMULA_3_VALORE = rilevazione.getValoreRilevato().floatValue();
+														AC_FORMULA_3_VALORE = valoreRilevato;
 													}
 													if(AC_FORMULA_4 == null) {
 														AC_FORMULA_4 = misuraCaratterisitca.getYFormula();
-														AC_FORMULA_4_VALORE = rilevazione.getValoreRilevato().floatValue();
+														AC_FORMULA_4_VALORE = valoreRilevato;
 													}
 													if(AC_FORMULA_5 == null) {
 														AC_FORMULA_5 = misuraCaratterisitca.getYFormula();
-														AC_FORMULA_5_VALORE = rilevazione.getValoreRilevato().floatValue();
+														AC_FORMULA_5_VALORE = valoreRilevato;
 													}
 
 												}
@@ -1602,6 +1629,8 @@ public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 											}
 										}
 									}
+								}else {
+									continue;
 								}
 
 								YPTQcAnalisiAcciaieria analisi = (YPTQcAnalisiAcciaieria) Factory.createObject(YPTQcAnalisiAcciaieria.class);
@@ -1633,16 +1662,16 @@ public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 								analisi.setCrEq(CR_EQ);
 								analisi.setCu(CU);
 								analisi.setH_(H);
-								analisi.sethPpmOPerc(H_PPM_O_PERC);
+								analisi.setHPpmOPerc(H_PPM_O_PERC);
 								analisi.setJf(JF);
 								analisi.setMn(MN);
 								analisi.setMo(MO);
 								analisi.setN_(N);
-								analisi.setnPpmOPerc(N_PPM_O_PERC);
+								analisi.setNPpmOPerc(N_PPM_O_PERC);
 								analisi.setNb(NB);
 								analisi.setNi(NI);
 								analisi.setO_(O);
-								analisi.setoPpmOPerc(O_PPM_O_PERC);
+								analisi.setOPpmOPerc(O_PPM_O_PERC);
 								analisi.setP_(P);
 								analisi.setPb(PB);
 								analisi.setPcm(PCM);
@@ -1657,7 +1686,7 @@ public class YDtsxRmOdaDDTRunner extends BatchRunnable implements Authorizable {
 								analisi.setW_(W);
 								analisi.setXf(XF);
 								analisi.setZr(ZR);
-								analisi.setcN(C_N);
+								analisi.setC_N(C_N);
 								analisi.setFe(FE);
 								analisi.setNbTa(NB_TA);
 								analisi.setY_(Y);

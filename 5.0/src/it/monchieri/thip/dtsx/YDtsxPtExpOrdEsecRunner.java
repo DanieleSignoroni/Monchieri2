@@ -51,7 +51,7 @@ import it.thera.thip.produzione.ordese.OrdineEsecutivoTM;
 
 public class YDtsxPtExpOrdEsecRunner extends BatchRunnable implements Authorizable{
 
-	public static final String NOME_DB_EXT = "PantheraTarget";
+	public static final String NOME_DB_EXT = "PantheraTarget_test";
 	public static final String UTENTE_DB_EXT = "Panthera";
 	public static final String PWD_DB_EXT = "panthera";
 	public static final String SRV_DB_EXT = "SRVDB.fmonchieri.locale";
@@ -61,43 +61,73 @@ public class YDtsxPtExpOrdEsecRunner extends BatchRunnable implements Authorizab
 	public static final java.sql.Date MAX_SQL_DATE = TimeUtils.getDate(2100, 12, 31);
 
 	public static final String SQL_ESTRAZ_ORD_ESEC = "SELECT "
-			+ "	OE.* "
-			+ "FROM "
-			+ "	THIP.ORD_ESEC OE "
-			+ "INNER JOIN THIP.ORDESE_ATV_PRD PRD  "
-			+ "ON "
-			+ "	OE.ID_AZIENDA = PRD.ID_AZIENDA "
+			+ "DOCPRD.DATA_REG,	OE.* "
+			+ "FROM  "
+			+ "				THIP.ORD_ESEC OE "
+			+ "INNER JOIN THIP.ORDESE_ATV_PRD PRD   "
+			+ "			ON  "
+			+ "				OE.ID_AZIENDA = PRD.ID_AZIENDA "
 			+ "	AND OE.ID_ANNO_ORD = PRD.ID_ANNO_ORD "
 			+ "	AND OE.ID_NUMERO_ORD = PRD.ID_NUMERO_ORD "
 			+ "	AND PRD.TIPO_PRODOTTO = '0' "
 			+ "	AND PRD.STATO_VERSAM < '2' "
-			+ "INNER JOIN THIP.ARTICOLI ARTPRD  "
-			+ "ON "
-			+ "	ARTPRD.ID_AZIENDA = PRD.ID_AZIENDA "
+			+ "INNER JOIN THIP.ARTICOLI ARTPRD   "
+			+ "			ON  "
+			+ "				ARTPRD.ID_AZIENDA = PRD.ID_AZIENDA "
 			+ "	AND ARTPRD.ID_ARTICOLO = PRD.R_ARTICOLO "
-			+ "	AND COALESCE(ARTPRD.R_LINEA_PROD,'') = 'FOR' "
-			+ "INNER JOIN THIP.ORD_ESEC_ATV ATV1 "
-			+ "    ON "
-			+ "	ATV1.ID_AZIENDA = OE.ID_AZIENDA "
+			+ "	AND COALESCE(ARTPRD.R_LINEA_PROD, "
+			+ "	'') = 'FOR' "
+			+ "INNER JOIN THIP.ORD_ESEC_ATV ATV1  "
+			+ "			    ON  "
+			+ "				ATV1.ID_AZIENDA = OE.ID_AZIENDA "
 			+ "	AND ATV1.ID_ANNO_ORD = OE.ID_ANNO_ORD "
 			+ "	AND ATV1.ID_NUMERO_ORD = OE.ID_NUMERO_ORD "
 			+ "	AND ATV1.ID_RIGA_ATTIVITA = ( "
-			+ "	SELECT "
-			+ "		MIN(A.ID_RIGA_ATTIVITA) "
-			+ "	FROM "
-			+ "		THIP.ORD_ESEC_ATV A "
-			+ "	WHERE "
-			+ "		A.ID_AZIENDA = OE.ID_AZIENDA "
+			+ "	SELECT  "
+			+ "					MIN(A.ID_RIGA_ATTIVITA) "
+			+ "	FROM  "
+			+ "					THIP.ORD_ESEC_ATV A "
+			+ "	WHERE  "
+			+ "					A.ID_AZIENDA = OE.ID_AZIENDA "
 			+ "		AND A.ID_ANNO_ORD = OE.ID_ANNO_ORD "
-			+ "		AND A.ID_NUMERO_ORD = OE.ID_NUMERO_ORD "
-			+ "    ) "
-			+ "INNER JOIN THIP.DOC_PRD DOCPRD  "
-			+ "ON "
-			+ "	DOCPRD.ID_AZIENDA = OE.ID_AZIENDA "
+			+ "		AND A.ID_NUMERO_ORD = OE.ID_NUMERO_ORD  "
+			+ "			    ) "
+			+ "INNER JOIN THIP.DOC_PRD DOCPRD   "
+			+ "			ON  "
+			+ "				DOCPRD.ID_AZIENDA = OE.ID_AZIENDA "
 			+ "	AND DOCPRD.R_ANNO_ORDINE = OE.ID_ANNO_ORD "
 			+ "	AND DOCPRD.R_NUMERO_ORD = OE.ID_NUMERO_ORD "
 			+ "	AND DOCPRD.R_RIGA_ATTIVITA = ATV1.ID_RIGA_ATTIVITA "
 			+ "	AND DOCPRD.STATO = 'V' "
+			+ "INNER JOIN THIPPERS.MQT_ORD_ESEC_PARENTCHILD_ESEPRD moepe  "
+			+ "ON "
+			+ "	moepe.ID_AZIENDA_PRTN = OE.ID_AZIENDA "
+			+ "	AND moepe.ID_ANNO_ORD_PRTN = OE.ID_ANNO_ORD "
+			+ "	AND moepe.ID_NUMERO_ORD_PRTN = OE.ID_NUMERO_ORD "
+			+ "INNER JOIN ( "
+			+ "	SELECT "
+			+ "		* "
+			+ "	FROM "
+			+ "		THIPPERS.MQT_ORD_ESEC_PARENTCHILD_ESEPRD q_moepe "
+			+ "	WHERE "
+			+ "		GENERATION = ( "
+			+ "		SELECT "
+			+ "			Min(mmoepe.GENERATION) "
+			+ "		FROM "
+			+ "			THIPPERS.MQT_ORD_ESEC_PARENTCHILD_ESEPRD mmoepe "
+			+ "		WHERE "
+			+ "			(mmoepe.R_CONFIGURAZIONE_MAT_CHLD IS NOT NULL "
+			+ "				OR mmoepe.R_MAGAZZINO_PRL_MAT_CHLD IN('CL')) "
+			+ "				AND mmoepe.ID_AZIENDA_PRTN = q_moepe.ID_AZIENDA_PRTN "
+			+ "				AND mmoepe.ID_ANNO_ORD_PRTN = q_moepe.ID_ANNO_ORD_PRTN "
+			+ "				AND mmoepe.ID_NUMERO_ORD_PRTN = q_moepe.ID_NUMERO_ORD_PRTN "
+			+ "				AND mmoepe.ID_LOTTO_PRTN = q_moepe.ID_LOTTO_PRTN) "
+			+ "	) moepe_mat "
+			+ "ON "
+			+ "	moepe_mat.ID_AZIENDA_PRTN = moepe.ID_AZIENDA_PRTN "
+			+ "	AND moepe_mat.ID_ANNO_ORD_PRTN = moepe.ID_ANNO_ORD_PRTN "
+			+ "	AND moepe_mat.ID_NUMERO_ORD_PRTN = moepe.ID_NUMERO_ORD_PRTN "
+			+ "	AND moepe_mat.ID_LOTTO_PRTN = moepe.ID_LOTTO_PRTN "
 			+ "WHERE OE.ID_AZIENDA = ? AND OE.TIMESTAMP_AGG > ? ";
 
 	protected Date iDataEstrazioneOrdEsec;
@@ -140,7 +170,6 @@ public class YDtsxPtExpOrdEsecRunner extends BatchRunnable implements Authorizab
 			timestamp = elabAnalisiQcRm.getDatiComuniEstesi().getTimestampAgg();
 		output.println("  Estraggo "+OrdineEsecutivoTM.TABLE_NAME+" con TIMESTAMP_AGG > "+timestamp.toString());
 		List lista = listaOrdiniEsecutiviTarget(timestamp);
-		lista.clear();
 		output.println("  Estratte "+lista.size()+" "+OrdineEsecutivoTM.TABLE_NAME+" ");
 		int rc = 0;
 		if(lista.size() > 0) {
@@ -191,167 +220,169 @@ public class YDtsxPtExpOrdEsecRunner extends BatchRunnable implements Authorizab
 	@SuppressWarnings("rawtypes")
 	public List listaOrdiniEsecutiviTarget(Timestamp timestamp){
 		List<YPTExpOrdEsec> ordini = new ArrayList<YPTExpOrdEsec>();
-		List<YOrdineEsecutivo> ordiniEsecutivi = recuperaOrdiniEsecutiviDaEsportare(timestamp);
-		for(YOrdineEsecutivo ordEsec : ordiniEsecutivi) {
 
-			YPTExpOrdEsec ordine = (YPTExpOrdEsec) Factory.createObject(YPTExpOrdEsec.class);
-			ordine.setDocId(ordEsec.getNumeroOrdFmt());
-			ordine.setAnnoDoc(ordEsec.getIdAnnoOrdine().trim());
-			String lastSix = ordEsec.getIdNumeroOrdine().substring(ordEsec.getIdNumeroOrdine().length() - 6);
-			int numDoc = Integer.parseInt(lastSix);
-			ordine.setNumDoc(BigDecimal.valueOf(numDoc).setScale(0,RoundingMode.DOWN));
-			ordine.setSerieDoc(ordEsec.getIdNumeroOrdine().substring(0,2));
-			ordine.setDataDoc(ordEsec.getDataOrdine());
-			if(ordEsec.getCliente() != null) {
-				ordine.setCodCf(ordEsec.getCliente().getCodSistemaInfEsterno());
-			}
-
-			ordine.setNoteConsegna("");
-			ordine.setNoteInt("");
-			ordine.setNoteStampa("");
-
-			ordine.setCodCausDoc("OP");
-
-			String codDep = ordEsec.getIdMagazzinoPrl();
-			if(ordEsec.getIdMagazzinoPrl().equals("MP") || ordEsec.getIdMagazzinoPrl().equals("SB") || ordEsec.getIdMagazzinoPrl().equals("MR")) {
-				codDep = "1.01";
-			}
-			ordine.setCodDep(codDep);
-
-			Articolo artPrd = null;
-
-			if(ordEsec.getOrdineVenditaRiga() != null) {
-				ordine.setCodArt(ordEsec.getOrdineVenditaRiga().getArticolo().getVecchioArticolo()); //cod target
-
-				try {
-					artPrd = (Articolo) Articolo.elementWithKey(Articolo.class, 
-							KeyHelper.buildObjectKey(new String[] {
-									ordEsec.getIdAzienda(),ordine.getCodArt()
-							}), PersistentObject.NO_LOCK);
-				} catch (SQLException e) {
-					e.printStackTrace(Trace.excStream);
-				}
-			}
-
-			if(artPrd != null) {
-				ordine.setDesProd(artPrd.getDescrizioneArticoloNLS().getDescrizione());
-			}
-
-			ordine.setQuantDaProd(ordEsec.getQtaOrdinataUMPrm().floatValue());
-
-			String codLot = "";
-			if(ordEsec.getRigaProdottoPrimario() != null && ordEsec.getRigaProdottoPrimario().getLottiProdotti().size() > 0) {
-				AttivitaEsecLottiPrd lotto = (AttivitaEsecLottiPrd) ordEsec.getRigaProdottoPrimario().getLottiProdotti().get(0);
-				codLot = lotto.getIdLotto();
-			}
-			ordine.setCodLot(codLot);
-
-			Articolo artTecnico = null;
-			Object[] dati = trovaMaterialeMinGenerationMqt(ordEsec);
-			if(dati != null && dati.length == 4) {
-				String idArticoloMatChld = dati[0] != null ? (String) dati[0] : "";
-				String idLottoMatChld = dati[1] != null ? (String) dati[1] : "";
-				BigDecimal qtaMatPrlChld = dati[2] != null ? (BigDecimal) dati[2] : BigDecimal.ZERO;
-				Double coefRisorsa = dati[3] != null ? (Double) dati[3] : 0;
-
-				try {
-					artTecnico = (Articolo) Articolo.elementWithKey(Articolo.class, 
-							KeyHelper.buildObjectKey(new String[] {
-									ordEsec.getIdAzienda(),idArticoloMatChld
-							}), PersistentObject.NO_LOCK);
-				} catch (SQLException e) {
-					e.printStackTrace(Trace.excStream);
+		List<YPTExpOrdEsec> ordiniEsecutivi = recuperaOrdiniEsecutiviDaEsportare(timestamp);
+		for(YPTExpOrdEsec ordine : ordiniEsecutivi) {
+			YOrdineEsecutivo ordEsec = ordine.getOrdineEsecutivoPanthera();
+			if(ordEsec != null) {
+				ordine.setDocId(ordEsec.getNumeroOrdFmt());
+				ordine.setAnnoDoc(ordEsec.getIdAnnoOrdine().trim());
+				String lastSix = ordEsec.getIdNumeroOrdine().substring(ordEsec.getIdNumeroOrdine().length() - 6);
+				int numDoc = Integer.parseInt(lastSix);
+				ordine.setNumDoc(BigDecimal.valueOf(numDoc).setScale(0,RoundingMode.DOWN));
+				ordine.setSerieDoc(ordEsec.getIdNumeroOrdine().substring(0,2));
+				ordine.setDataDoc(ordEsec.getDataOrdine());
+				if(ordEsec.getCliente() != null) {
+					ordine.setCodCf(ordEsec.getCliente().getCodSistemaInfEsterno());
 				}
 
-				ordine.setEntrata(idLottoMatChld);
-				ordine.setQuantScaricata(qtaMatPrlChld.multiply(BigDecimal.valueOf(coefRisorsa)).floatValue());
-			}
+				ordine.setNoteConsegna("");
+				ordine.setNoteInt("");
+				ordine.setNoteStampa("");
 
-			if(artTecnico != null) {
-				ordine.setCodVarMateriale(artTecnico.getIdArticoloTecnico());
-			}
+				ordine.setCodCausDoc("OP");
 
-			String RIF_RIGA_ORD_CLI_4B = "";
-
-			if(ordEsec.getOrdineVenditaRiga() != null) {
-				RIF_RIGA_ORD_CLI_4B = ordEsec.getAnnoOrdineCliente() + "-ORDC-000" + ordEsec.getNumeroOrdineCliente().substring(6,10);
-				RIF_RIGA_ORD_CLI_4B += "-"+String.format("%03d", ordEsec.getRigaOrdineCliente());
-			}
-
-			ordine.setRifRigaOrdCli4b(RIF_RIGA_ORD_CLI_4B);
-
-			ordine.setUtenteIns(ordEsec.getDatiComuniEstesi().getIdUtenteCrz());
-			ordine.setDataIns(ordEsec.getDatiComuniEstesi().getDataCrz());
-			ordine.setUtenteMod(ordEsec.getDatiComuniEstesi().getIdUtenteAgg());
-
-			Date dataMod = null;
-			if(ordEsec.getOrdineVenditaRiga() != null && (
-					ordEsec.getDatiComuniEstesi().getTimestampAgg().compareTo(ordEsec.getOrdineVenditaRiga().getDatiComuniEstesi().getTimestampCrz()) < 0)) {
-				dataMod = TimeUtils.getDate(ordEsec.getOrdineVenditaRiga().getDatiComuniEstesi().getTimestampAgg());
-
-			}else {
-				dataMod = TimeUtils.getDate(ordEsec.getDatiComuniEstesi().getTimestampAgg());
-			}
-
-			ordine.setDataMod(dataMod);
-
-			if(ordEsec.getOrdineVenditaRiga() != null) {
-				ordine.setPesgrez(((YOrdineVenditaRigaPrm)ordEsec.getOrdineVenditaRiga()).getPesoGrezzo());
-			}
-
-			ordine.setPesmult(null);
-			ordine.setChiodaia(null);
-			ordine.setMandrino(null);
-			ordine.setAttrezz1(null);
-			ordine.setAttrezz2(null);
-
-			ordine.setProvnum(ordEsec.getNumeroProva());
-			ordine.setDataSped(null);
-			ordine.setDataTt(null);
-
-			if(ordEsec.getYmatricolaCli() != null) {
-				ordine.setIdentcli(ordEsec.getYmatricolaCli());
-			}else if(ordEsec.getOrdineVenditaRiga() != null) {
-				ordine.setIdentcli(((YOrdineVenditaRigaPrm)ordEsec.getOrdineVenditaRiga()).getMatricolaCliente());
-			}
-
-			if(ordEsec.getOrdineVenditaRiga() != null) {
-				boolean isNucleare = ((YArticolo)ordEsec.getOrdineVenditaRiga().getArticolo()).isNucleare();
-				ordine.setNucleare(isNucleare ? BigDecimal.ONE : BigDecimal.ZERO);
-			}
-
-			if(ordEsec.getPartNumber() != null) {
-				ordine.setCodcli(ordEsec.getPartNumber());
-			}else if(ordEsec.getOrdineVenditaRiga() != null) {
-				ordine.setCodcli(((YOrdineVenditaRigaPrm)ordEsec.getOrdineVenditaRiga()).getPartNumber());
-			}
-
-			ordine.setTipoOperazione("0");
-			ordine.setEseguito("0");
-			ordine.setNumRiga(1);
-
-			ordine.setDocRigaId(ordEsec.getNumeroOrdFmt()+"/0001");
-
-			String codArtComp = "";
-
-			if(artTecnico != null) {
-				if(artTecnico.getIdClasseFiscale() != null) {
-					codArtComp = artTecnico.getIdClasseFiscale();
-				}else{
-					codArtComp = "000.0";
+				String codDep = ordEsec.getIdMagazzinoPrl();
+				if(ordEsec.getIdMagazzinoPrl().equals("MP") || ordEsec.getIdMagazzinoPrl().equals("SB") || ordEsec.getIdMagazzinoPrl().equals("MR")) {
+					codDep = "1.01";
 				}
+				ordine.setCodDep(codDep);
+
+				Articolo artPrd = null;
+
+				if(ordEsec.getOrdineVenditaRiga() != null) {
+					ordine.setCodArt(ordEsec.getOrdineVenditaRiga().getArticolo().getVecchioArticolo()); //cod target
+
+					try {
+						artPrd = (Articolo) Articolo.elementWithKey(Articolo.class, 
+								KeyHelper.buildObjectKey(new String[] {
+										ordEsec.getIdAzienda(),ordine.getCodArt()
+								}), PersistentObject.NO_LOCK);
+					} catch (SQLException e) {
+						e.printStackTrace(Trace.excStream);
+					}
+				}
+
+				if(artPrd != null) {
+					ordine.setDesProd(artPrd.getDescrizioneArticoloNLS().getDescrizione());
+				}
+
+				ordine.setQuantDaProd(ordEsec.getQtaOrdinataUMPrm().floatValue());
+
+				String codLot = "";
+				if(ordEsec.getRigaProdottoPrimario() != null && ordEsec.getRigaProdottoPrimario().getLottiProdotti().size() > 0) {
+					AttivitaEsecLottiPrd lotto = (AttivitaEsecLottiPrd) ordEsec.getRigaProdottoPrimario().getLottiProdotti().get(0);
+					codLot = lotto.getIdLotto();
+				}
+				ordine.setCodLot(codLot);
+
+				Articolo artTecnico = null;
+				Object[] dati = trovaMaterialeMinGenerationMqt(ordEsec);
+				if(dati != null && dati.length == 4) {
+					String idArticoloMatChld = dati[0] != null ? (String) dati[0] : "";
+					String idLottoMatChld = dati[1] != null ? (String) dati[1] : "";
+					BigDecimal qtaMatPrlChld = dati[2] != null ? (BigDecimal) dati[2] : BigDecimal.ZERO;
+					//Double coefRisorsa = dati[3] != null ? (Double) dati[3] : 0;
+
+					try {
+						artTecnico = (Articolo) Articolo.elementWithKey(Articolo.class, 
+								KeyHelper.buildObjectKey(new String[] {
+										ordEsec.getIdAzienda(),idArticoloMatChld
+								}), PersistentObject.NO_LOCK);
+					} catch (SQLException e) {
+						e.printStackTrace(Trace.excStream);
+					}
+
+					ordine.setEntrata(idLottoMatChld);
+					ordine.setQuantScaricata(qtaMatPrlChld.floatValue());
+				}
+
+				if(artTecnico != null) {
+					ordine.setCodVarMateriale(artTecnico.getIdArticoloTecnico());
+				}
+
+				String RIF_RIGA_ORD_CLI_4B = "";
+
+				if(ordEsec.getOrdineVenditaRiga() != null) {
+					RIF_RIGA_ORD_CLI_4B = ordEsec.getAnnoOrdineCliente() + "-ORDC-000" + ordEsec.getNumeroOrdineCliente().substring(6,10);
+					RIF_RIGA_ORD_CLI_4B += "-"+String.format("%03d", ordEsec.getRigaOrdineCliente());
+				}
+
+				ordine.setRifRigaOrdCli4b(RIF_RIGA_ORD_CLI_4B);
+
+				ordine.setUtenteIns(ordEsec.getDatiComuniEstesi().getIdUtenteCrz());
+				ordine.setDataIns(ordEsec.getDatiComuniEstesi().getDataCrz());
+				ordine.setUtenteMod(ordEsec.getDatiComuniEstesi().getIdUtenteAgg());
+
+				Timestamp dataMod = null;
+				if(ordEsec.getOrdineVenditaRiga() != null && (
+						ordEsec.getDatiComuniEstesi().getTimestampAgg().compareTo(ordEsec.getOrdineVenditaRiga().getDatiComuniEstesi().getTimestampCrz()) < 0)) {
+					dataMod = (ordEsec.getOrdineVenditaRiga().getDatiComuniEstesi().getTimestampAgg());
+
+				}else {
+					dataMod = (ordEsec.getDatiComuniEstesi().getTimestampAgg());
+				}
+				
+				dataMod = TimeUtils.getCurrentTimestamp();
+
+				ordine.setDataMod(dataMod);
+
+				if(ordEsec.getOrdineVenditaRiga() != null) {
+					ordine.setPesgrez(((YOrdineVenditaRigaPrm)ordEsec.getOrdineVenditaRiga()).getPesoGrezzo());
+				}
+
+				ordine.setPesmult(null);
+				ordine.setChiodaia(null);
+				ordine.setMandrino(null);
+				ordine.setAttrezz1(null);
+				ordine.setAttrezz2(null);
+
+				ordine.setProvnum(ordEsec.getNumeroProva());
+				ordine.setDataSped(null);
+				ordine.setDataTt(null);
+
+				if(ordEsec.getYmatricolaCli() != null) {
+					ordine.setIdentcli(ordEsec.getYmatricolaCli());
+				}else if(ordEsec.getOrdineVenditaRiga() != null) {
+					ordine.setIdentcli(((YOrdineVenditaRigaPrm)ordEsec.getOrdineVenditaRiga()).getMatricolaCliente());
+				}
+
+				if(ordEsec.getOrdineVenditaRiga() != null) {
+					boolean isNucleare = ((YArticolo)ordEsec.getOrdineVenditaRiga().getArticolo()).isNucleare();
+					ordine.setNucleare(isNucleare ? BigDecimal.ONE : BigDecimal.ZERO);
+				}
+
+				if(ordEsec.getPartNumber() != null) {
+					ordine.setCodcli(ordEsec.getPartNumber());
+				}else if(ordEsec.getOrdineVenditaRiga() != null) {
+					ordine.setCodcli(((YOrdineVenditaRigaPrm)ordEsec.getOrdineVenditaRiga()).getPartNumber());
+				}
+
+				ordine.setTipoOperazione("0");
+				ordine.setEseguito("0");
+				ordine.setNumRiga(1);
+
+				ordine.setDocRigaId(ordEsec.getNumeroOrdFmt()+"/0001");
+
+				String codArtComp = "";
+
+				if(artTecnico != null) {
+					if(artTecnico.getIdClasseFiscale() != null) {
+						codArtComp = artTecnico.getIdClasseFiscale();
+					}else{
+						codArtComp = "000.0";
+					}
+				}
+
+				ordine.setCodArtComp(codArtComp);
+
+				ordine.setQuantMaterozza(0.f);
+
+				//Date dataMovimento = ordEsec.getDateProgrammate().getStartDate();
+				//ordine.setDataMovimento(dataMovimento);
+
+				ordini.add(ordine);
 			}
-
-			ordine.setCodArtComp(codArtComp);
-
-			ordine.setQuantMaterozza(0.f);
-
-			Date dataMovimento = ordEsec.getDateProgrammate().getStartDate();
-
-			ordine.setDataMovimento(dataMovimento);
-
-			ordini.add(ordine);
-
 		}
 		return ordini;
 	}
@@ -360,23 +391,40 @@ public class YDtsxPtExpOrdEsecRunner extends BatchRunnable implements Authorizab
 		Object[] ret = new Object[4];
 		ResultSet rs = null;
 		String stmt = "SELECT "
-				+ "	* "
+				+ "	moepe_mat.MAT_QTA_PRL_UM_PRM_CHLD * moepe_mat.COEF_RISORSA AS MAT_QTA_PRL_UM_PRM_CHLD, "
+				+ "	COALESCE(moepe_mat.ID_LOTTO_MAT_CHLD, "
+				+ "	'' ) AS ID_LOTTO_MAT_CHLD, "
+				+ "	moepe_mat.R_ARTICOLO_MAT_CHLD , "
+				+ "	moepe_mat.COEF_RISORSA  "
 				+ "FROM "
-				+ "	THIPPERS.MQT_ORD_ESEC_PARENTCHILD_ESEPRD "
-				+ "WHERE "
-				+ "	ID_AZIENDA_PRTN = '"+ordEsec.getIdAzienda()+"' "
-				+ "	AND ID_NUMERO_ORD_PRTN = '"+ordEsec.getIdNumeroOrdine()+"' "
-				+ "	AND ID_ANNO_ORD_PRTN = '"+ordEsec.getIdAnnoOrdine()+"' "
-				+ "	AND GENERATION = ( "
+				+ "	THIPPERS.MQT_ORD_ESEC_PARENTCHILD_ESEPRD moepe "
+				+ "INNER JOIN ( "
 				+ "	SELECT "
-				+ "		MIN(GENERATION) "
+				+ "		* "
 				+ "	FROM "
-				+ "		THIPPERS.MQT_ORD_ESEC_PARENTCHILD_ESEPRD "
+				+ "		THIPPERS.MQT_ORD_ESEC_PARENTCHILD_ESEPRD q_moepe "
 				+ "	WHERE "
-				+ "		ID_AZIENDA_PRTN = '"+ordEsec.getIdAzienda()+"' "
-				+ "		AND ID_NUMERO_ORD_PRTN = '"+ordEsec.getIdNumeroOrdine()+"' "
-				+ "		AND ID_ANNO_ORD_PRTN = '"+ordEsec.getIdAnnoOrdine()+"' "
-				+ "  );";
+				+ "		GENERATION = ( "
+				+ "		SELECT "
+				+ "			Min(mmoepe.GENERATION) "
+				+ "		FROM "
+				+ "			THIPPERS.MQT_ORD_ESEC_PARENTCHILD_ESEPRD mmoepe "
+				+ "		WHERE "
+				+ "			(mmoepe.R_CONFIGURAZIONE_MAT_CHLD IS NOT NULL "
+				+ "				OR mmoepe.R_MAGAZZINO_PRL_MAT_CHLD IN('CL')) "
+				+ "				AND mmoepe.ID_AZIENDA_PRTN = q_moepe.ID_AZIENDA_PRTN "
+				+ "				AND mmoepe.ID_ANNO_ORD_PRTN = q_moepe.ID_ANNO_ORD_PRTN "
+				+ "				AND mmoepe.ID_NUMERO_ORD_PRTN = q_moepe.ID_NUMERO_ORD_PRTN "
+				+ "				AND mmoepe.ID_LOTTO_PRTN = q_moepe.ID_LOTTO_PRTN) "
+				+ "	) moepe_mat "
+				+ "ON "
+				+ "	moepe_mat.ID_AZIENDA_PRTN = moepe.ID_AZIENDA_PRTN "
+				+ "	AND moepe_mat.ID_ANNO_ORD_PRTN = moepe.ID_ANNO_ORD_PRTN "
+				+ "	AND moepe_mat.ID_NUMERO_ORD_PRTN = moepe.ID_NUMERO_ORD_PRTN "
+				+ "	AND moepe_mat.ID_LOTTO_PRTN = moepe.ID_LOTTO_PRTN "
+				+ "WHERE moepe.ID_AZIENDA_PRTN = '"+ordEsec.getIdAzienda()+"' "
+				+ "AND moepe.ID_ANNO_ORD_PRTN = '"+ordEsec.getIdAnnoOrdine()+"' "
+				+ "AND moepe.ID_NUMERO_ORD_PRTN = '"+ordEsec.getIdNumeroOrdine()+"' ";
 		CachedStatement cs = null;
 		try {
 			cs = new CachedStatement(stmt);
@@ -437,10 +485,9 @@ public class YDtsxPtExpOrdEsecRunner extends BatchRunnable implements Authorizab
 		return docPrd;
 	}
 
-	public List<YOrdineEsecutivo> recuperaOrdiniEsecutiviDaEsportare(Timestamp timestamp){
-		List<YOrdineEsecutivo> ordini = new ArrayList<YOrdineEsecutivo>();
+	public List<YPTExpOrdEsec> recuperaOrdiniEsecutiviDaEsportare(Timestamp timestamp){
+		List<YPTExpOrdEsec> ordini = new ArrayList<YPTExpOrdEsec>();
 		PreparedStatement ps = null;
-		List<String> keys = new ArrayList<String>();
 		try {
 			ResultSet rs = null;
 			ps = ConnectionManager.getCurrentConnection().prepareStatement(SQL_ESTRAZ_ORD_ESEC);
@@ -449,11 +496,14 @@ public class YDtsxPtExpOrdEsecRunner extends BatchRunnable implements Authorizab
 			db.setString(ps, 2, YDtsxRmOdaDDTRunner.getFormattedTimestampForQuery(timestamp));
 			rs = ps.executeQuery();
 			while(rs.next()) {
-				keys.add(KeyHelper.buildObjectKey(new String[] {
+				YPTExpOrdEsec ordine = (YPTExpOrdEsec) Factory.createObject(YPTExpOrdEsec.class);
+				ordine.iChiaveOrdineEsecutivoPanthera = (KeyHelper.buildObjectKey(new String[] {
 						rs.getString(OrdineEsecutivoTM.ID_AZIENDA),
 						rs.getString(OrdineEsecutivoTM.ID_ANNO_ORD),
 						rs.getString(OrdineEsecutivoTM.ID_NUMERO_ORD)
 				}));
+				ordine.setDataMovimento(rs.getDate(DocumentoProduzioneTM.DATA_REG));
+				ordini.add(ordine);
 			}
 		}catch (SQLException e) {
 			e.printStackTrace(Trace.excStream);
@@ -464,13 +514,6 @@ public class YDtsxPtExpOrdEsecRunner extends BatchRunnable implements Authorizab
 				} catch (SQLException e) {
 					e.printStackTrace(Trace.excStream);
 				}
-			}
-		}
-		for(String key : keys) {
-			try {
-				ordini.add((YOrdineEsecutivo) YOrdineEsecutivo.elementWithKey(YOrdineEsecutivo.class, key, PersistentObject.NO_LOCK));
-			} catch (SQLException e) {
-				e.printStackTrace(Trace.excStream);
 			}
 		}
 		return ordini;
