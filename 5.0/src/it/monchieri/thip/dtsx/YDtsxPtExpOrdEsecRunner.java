@@ -8,6 +8,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 import com.thera.thermfw.base.TimeUtils;
@@ -25,12 +26,15 @@ import com.thera.thermfw.persist.SQLServerJTDSNoUnicodeDatabase;
 import com.thera.thermfw.security.Authorizable;
 
 import it.monchieri.thip.base.articolo.YArticolo;
+import it.monchieri.thip.produzione.documento.YDocumentoProduzione;
 import it.monchieri.thip.produzione.ordese.YOrdineEsecutivo;
 import it.monchieri.thip.target.YPTExpOrdEsec;
 import it.monchieri.thip.target.YPTExpOrdEsecTM;
 import it.monchieri.thip.vendite.ordineVE.YOrdineVenditaRigaPrm;
 import it.thera.thip.base.articolo.Articolo;
 import it.thera.thip.base.azienda.Azienda;
+import it.thera.thip.produzione.documento.DocumentoPrdRigaLottoMat;
+import it.thera.thip.produzione.documento.DocumentoPrdRigaMateriale;
 import it.thera.thip.produzione.documento.DocumentoProduzione;
 import it.thera.thip.produzione.documento.DocumentoProduzioneTM;
 import it.thera.thip.produzione.ordese.AttivitaEsecLottiPrd;
@@ -61,7 +65,7 @@ public class YDtsxPtExpOrdEsecRunner extends BatchRunnable implements Authorizab
 	public static final java.sql.Date MAX_SQL_DATE = TimeUtils.getDate(2100, 12, 31);
 
 	public static final String SQL_ESTRAZ_ORD_ESEC = "SELECT "
-			+ "DOCPRD.DATA_REG,	OE.* "
+			+ "DOCPRD.ID_NUMERO_DOC,DOCPRD.ID_ANNO_DOC,	OE.* "
 			+ "FROM  "
 			+ "				THIP.ORD_ESEC OE "
 			+ "INNER JOIN THIP.ORDESE_ATV_PRD PRD   "
@@ -224,7 +228,8 @@ public class YDtsxPtExpOrdEsecRunner extends BatchRunnable implements Authorizab
 		List<YPTExpOrdEsec> ordiniEsecutivi = recuperaOrdiniEsecutiviDaEsportare(timestamp);
 		for(YPTExpOrdEsec ordine : ordiniEsecutivi) {
 			YOrdineEsecutivo ordEsec = ordine.getOrdineEsecutivoPanthera();
-			if(ordEsec != null) {
+			YDocumentoProduzione docPrd = ordine.getDocumentoProduzionePanthera();
+			if(ordEsec != null && docPrd != null) {
 				ordine.setDocId(ordEsec.getNumeroOrdFmt());
 				ordine.setAnnoDoc(ordEsec.getIdAnnoOrdine().trim());
 				String lastSix = ordEsec.getIdNumeroOrdine().substring(ordEsec.getIdNumeroOrdine().length() - 6);
@@ -277,24 +282,52 @@ public class YDtsxPtExpOrdEsecRunner extends BatchRunnable implements Authorizab
 				ordine.setCodLot(codLot);
 
 				Articolo artTecnico = null;
-				Object[] dati = trovaMaterialeMinGenerationMqt(ordEsec);
-				if(dati != null && dati.length == 4) {
-					String idArticoloMatChld = dati[0] != null ? (String) dati[0] : "";
-					String idLottoMatChld = dati[1] != null ? (String) dati[1] : "";
-					BigDecimal qtaMatPrlChld = dati[2] != null ? (BigDecimal) dati[2] : BigDecimal.ZERO;
-					//Double coefRisorsa = dati[3] != null ? (Double) dati[3] : 0;
+				//				Object[] dati = trovaMaterialeMinGenerationMqt(ordEsec);
+				//				if(dati != null && dati.length == 4) {
+				//					String idArticoloMatChld = dati[0] != null ? (String) dati[0] : "";
+				//					String idLottoMatChld = dati[1] != null ? (String) dati[1] : "";
+				//					BigDecimal qtaMatPrlChld = dati[2] != null ? (BigDecimal) dati[2] : BigDecimal.ZERO;
+				//					//Double coefRisorsa = dati[3] != null ? (Double) dati[3] : 0;
+				//
+				//					try {
+				//						artTecnico = (Articolo) Articolo.elementWithKey(Articolo.class, 
+				//								KeyHelper.buildObjectKey(new String[] {
+				//										ordEsec.getIdAzienda(),idArticoloMatChld
+				//								}), PersistentObject.NO_LOCK);
+				//					} catch (SQLException e) {
+				//						e.printStackTrace(Trace.excStream);
+				//					}
+				//
+				//					ordine.setEntrata(idLottoMatChld);
+				//					ordine.setQuantScaricata(qtaMatPrlChld.floatValue());
+				//				}
 
-					try {
-						artTecnico = (Articolo) Articolo.elementWithKey(Articolo.class, 
-								KeyHelper.buildObjectKey(new String[] {
-										ordEsec.getIdAzienda(),idArticoloMatChld
-								}), PersistentObject.NO_LOCK);
-					} catch (SQLException e) {
-						e.printStackTrace(Trace.excStream);
+				if(ordine.getEntrata() == null || ordine.getEntrata().equals("-")) {
+					Iterator iterMats = docPrd.getMaterialiColl().iterator();
+					while(iterMats.hasNext()) {
+						DocumentoPrdRigaMateriale materiale = (DocumentoPrdRigaMateriale) iterMats.next();
+						Iterator iterLotti = materiale.getLottiColl().iterator();
+						if(!iterLotti.hasNext()) {
+							continue;
+						}
+						while(iterLotti.hasNext()) {
+							DocumentoPrdRigaLottoMat lotto = (DocumentoPrdRigaLottoMat) iterLotti.next();
+							if(lotto.getIdLotto().equals("-")) {
+								break;
+							}
+							ordine.setEntrata(lotto.getIdLotto());
+							ordine.setQuantScaricata(lotto.getQtaPrlUmPrm().floatValue());
+						}
+						try {
+							artTecnico = (Articolo) Articolo.elementWithKey(Articolo.class, 
+									KeyHelper.buildObjectKey(new String[] {
+											ordEsec.getIdAzienda(),materiale.getRArticolo()
+									}), PersistentObject.NO_LOCK);
+						} catch (SQLException e) {
+							e.printStackTrace(Trace.excStream);
+						}
+
 					}
-
-					ordine.setEntrata(idLottoMatChld);
-					ordine.setQuantScaricata(qtaMatPrlChld.floatValue());
 				}
 
 				if(artTecnico != null) {
@@ -322,7 +355,7 @@ public class YDtsxPtExpOrdEsecRunner extends BatchRunnable implements Authorizab
 				}else {
 					dataMod = (ordEsec.getDatiComuniEstesi().getTimestampAgg());
 				}
-				
+
 				dataMod = TimeUtils.getCurrentTimestamp();
 
 				ordine.setDataMod(dataMod);
@@ -379,7 +412,7 @@ public class YDtsxPtExpOrdEsecRunner extends BatchRunnable implements Authorizab
 				ordine.setQuantMaterozza(0.f);
 
 				//Date dataMovimento = ordEsec.getDateProgrammate().getStartDate();
-				//ordine.setDataMovimento(dataMovimento);
+				ordine.setDataMovimento(docPrd.getDataDichiarazione());
 
 				ordini.add(ordine);
 			}
@@ -502,7 +535,11 @@ public class YDtsxPtExpOrdEsecRunner extends BatchRunnable implements Authorizab
 						rs.getString(OrdineEsecutivoTM.ID_ANNO_ORD),
 						rs.getString(OrdineEsecutivoTM.ID_NUMERO_ORD)
 				}));
-				ordine.setDataMovimento(rs.getDate(DocumentoProduzioneTM.DATA_REG));
+				ordine.iChiaveDocumentoProduzionePanthera = KeyHelper.buildObjectKey(new String[] {
+						rs.getString(OrdineEsecutivoTM.ID_AZIENDA),
+						rs.getString(DocumentoProduzioneTM.ID_ANNO_DOC),
+						rs.getString(DocumentoProduzioneTM.ID_NUMERO_DOC)
+				});
 				ordini.add(ordine);
 			}
 		}catch (SQLException e) {
