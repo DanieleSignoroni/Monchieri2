@@ -91,7 +91,7 @@ public class OrdEsecAtvSogCollaudoTM extends TableManager {
 		addAttribute("ValNomProposto",    VAL_NOM_PROPOSTO);
 		addAttribute("FaseObbl",          FASE_OBBL);
 		addAttribute("CmtrWhitness",      CMTR_WHITNESS);
-		addAttribute("NumeroOrdFmt",NUMERO_ORD_FMT);
+		//addAttribute("NumeroOrdFmt",NUMERO_ORD_FMT);
 		//addAttribute("IdNumeroOrp", ORP_EFF_DOC_ID);
 
 		// If this table has a primary key, uncomment or modify accordingly:

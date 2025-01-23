@@ -56,7 +56,7 @@ public class ImportazioneCicliControlloStatementHelper {
 			+ "FROM "
 			+ "	PantheraTarget.THIPPERS.ORD_ESEC_ATV_SOG_COLLAUDO_20 oea "
 			+ "WHERE "
-			+ "	oea.NOME_TABELLA = 'C02_FUCINATURA' AND oea.R_COMMESSA = 'A9071001' ";
+			+ "	oea.NOME_TABELLA = 'C02_FUCINATURA' ";
 	
 	public static String STMT_SELECT_C03_CONTROLLO_GREZZO_POST_FORGI = "SELECT "
 			+ "	DISTINCT CAST('SGQ_CICLI_FMO' AS nchar(20)) AS DATA_ORIGIN, "
