@@ -64,7 +64,7 @@ public class NoteAttivitaSogCollaudoTM extends TableManager {
 		//addAttribute("IdCommentUse",R_COMMENT_USE);
 		//addAttribute("CommentType1",COMM_TYPE1_ID);
 		//addAttribute("CommentType2",COMM_TYPE2_ID);
-		addAttribute("NumeroOrdFmt",NUMERO_ORD_FMT);
+//		addAttribute("NumeroOrdFmt",NUMERO_ORD_FMT);
 		addAttribute("IdAttivita",R_ATTIVITA);
 
 	}

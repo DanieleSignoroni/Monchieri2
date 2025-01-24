@@ -318,7 +318,6 @@ public class OrdEsecAtvSogCollaudo extends OrdEsecAtvSogCollaudoPO {
 				+ "	NULL AS COMM_TYPE1_ID, "
 				+ "	NULL AS COMM_TYPE2_ID, "
 				+ "	CAST('SGQ_CICLI_TES' AS nchar(15)) AS R_COMMENT_USE "
-				+ "	-- "
 				+ "FROM PantheraTarget.THIPPERS.ORD_ESEC_ATV_SOG_COLLAUDO_20 oea "
 				+ "INNER JOIN [Target].[dbo].[QC_TT_PRELIMINARE_RIC_FM] qc "
 				+ "ON "

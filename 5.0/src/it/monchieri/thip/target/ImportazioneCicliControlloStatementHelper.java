@@ -1168,7 +1168,7 @@ public class ImportazioneCicliControlloStatementHelper {
 			+ "CAST('N' AS nchar(1)) AS RESERVED, "
 			+ "CAST('0' AS nchar(1)) AS TEXT_TYPE, "
 			+ "	NULL AS COMM_TYPE1_ID, "
-			+ "	NULL AS COMM_TYPE2_ID,oea.*, "
+			+ "	NULL AS COMM_TYPE2_ID,oea.*,'' AS NUMERO_ORD_FMT,'' AS ORP_EFF_DOC_ID, "
 			+ "	CAST('SGQ_CICLI_FAS' AS nchar(15)) AS R_COMMENT_USE "
 			+ "FROM         PantheraTarget.THIPPERS.ORD_ESEC_ATV_SOG_COLLAUDO_20 oea INNER JOIN "
 			+ "                          ( "
